@@ -6,7 +6,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ClerkProvider, useAuth } from '@clerk/expo';
-import { tokenCache } from '@clerk/expo/token-cache';
+import { tokenCache } from '@/utils/token-cache';
 import { useLanguageStore } from '@/store/language-store';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
