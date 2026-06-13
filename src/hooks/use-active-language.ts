@@ -32,6 +32,7 @@ export function useActiveLanguage() {
       if (isLoaded && user) {
         await user.updateMetadata({
           unsafeMetadata: {
+            ...user.unsafeMetadata,
             selectedLanguageId: id,
           },
         });
@@ -41,7 +42,9 @@ export function useActiveLanguage() {
     }
   };
 
-  const activeLanguage = languages.find(lang => lang.id === activeLanguageId) || languages[0];
+  const activeLanguage = activeLanguageId
+    ? (languages.find(lang => lang.id === activeLanguageId) ?? undefined)
+    : undefined;
 
   return {
     activeLanguage,
