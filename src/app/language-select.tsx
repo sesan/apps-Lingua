@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import { ScrollView, View, Text, Pressable, TextInput } from '@/tw';
 import { Image } from '@/tw/image';
@@ -24,13 +24,26 @@ export default function LanguageSelectScreen() {
   const router = useRouter();
   const { activeLanguageId, changeLanguage } = useActiveLanguage();
 
-  const [selectedId, setSelectedId] = useState<string>(activeLanguageId);
+  const [selectedId, setSelectedId] = useState<string | null>(activeLanguageId);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Sync selectedId when activeLanguageId becomes available
+  useEffect(() => {
+    if (activeLanguageId) {
+      setSelectedId(activeLanguageId);
+    }
+  }, [activeLanguageId]);
 
   // Handle confirmation
   const handleConfirm = async () => {
-    await changeLanguage(selectedId);
-    router.back();
+    if (selectedId) {
+      await changeLanguage(selectedId);
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)');
+      }
+    }
   };
 
   // Filter languages based on search query
@@ -50,16 +63,20 @@ export default function LanguageSelectScreen() {
 
       {/* Custom Header */}
       <View className="flex-row items-center justify-between px-6 py-3">
-        <Pressable 
-          onPress={() => router.back()}
-          className="w-10 h-10 items-center justify-center rounded-full bg-neutral-surface dark:bg-[#1E2540] active:opacity-75"
-        >
-          <SymbolView 
-            tintColor={scheme === 'dark' ? '#FFFFFF' : '#0D132B'} 
-            name={{ ios: 'chevron.left', android: 'chevron_left', web: 'chevron_left' }}
-            size={20}
-          />
-        </Pressable>
+        {activeLanguageId ? (
+          <Pressable 
+            onPress={() => router.back()}
+            className="w-10 h-10 items-center justify-center rounded-full bg-neutral-surface dark:bg-[#1E2540] active:opacity-75"
+          >
+            <SymbolView 
+              tintColor={scheme === 'dark' ? '#FFFFFF' : '#0D132B'} 
+              name={{ ios: 'chevron.left', android: 'chevron_left', web: 'chevron_left' }}
+              size={20}
+            />
+          </Pressable>
+        ) : (
+          <View className="w-10 h-10" />
+        )}
         <Text className="text-lg font-poppins-semibold text-[#0D132B] dark:text-white">
           Choose a language
         </Text>
@@ -169,12 +186,15 @@ export default function LanguageSelectScreen() {
       </ScrollView>
 
       {/* Bottom Visual & Action Panel */}
-      <View className="absolute bottom-0 left-0 right-0 items-center justify-end pointer-events-none">
+      <View className="absolute bottom-0 left-0 right-0 items-center justify-end pointer-events-none overflow-hidden h-[240px]">
         {/* Earth Image */}
         <Image 
           source={require('@/assets/images/earth.png')}
-          className="w-full aspect-[375/140]"
-          contentFit="cover"
+          className="w-full max-w-[440px] aspect-square"
+          contentFit="contain"
+          style={{
+            transform: [{ translateY: 95 }]
+          }}
         />
       </View>
 
@@ -187,7 +207,12 @@ export default function LanguageSelectScreen() {
       >
         <Pressable 
           onPress={handleConfirm}
-          className="w-full bg-[#6C4EF5] dark:bg-[#5B3BF6] py-4 px-6 rounded-2xl flex-row items-center justify-center active:opacity-95 shadow-lg shadow-[#6C4EF5]/20 dark:shadow-none"
+          disabled={!selectedId}
+          className={`w-full py-4 px-6 rounded-2xl flex-row items-center justify-center active:opacity-95 shadow-lg transition-all ${
+            selectedId 
+              ? 'bg-[#6C4EF5] dark:bg-[#5B3BF6] shadow-[#6C4EF5]/20 dark:shadow-none' 
+              : 'bg-neutral-border dark:bg-[#2E375B] opacity-50 shadow-none'
+          }`}
         >
           <Text className="text-white font-poppins-semibold text-[17px]">
             Confirm Selection

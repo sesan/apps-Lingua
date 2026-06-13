@@ -2,15 +2,34 @@ import { Image } from '@/tw/image';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, Pressable } from '@/tw';
 import { useColorScheme } from 'react-native';
-import { useAuth } from '@clerk/expo';
+import { useAuth, useUser } from '@clerk/expo';
 import { useRouter } from 'expo-router';
 import { useActiveLanguage } from '@/hooks/use-active-language';
+import { useLanguageStore } from '@/store/language-store';
 
 export default function Index() {
   const scheme = useColorScheme();
   const { signOut } = useAuth();
+  const { user } = useUser();
   const router = useRouter();
   const { activeLanguage } = useActiveLanguage();
+  const setActiveLanguageId = useLanguageStore((state) => state.setActiveLanguageId);
+
+  const handleClearLanguage = async () => {
+    try {
+      setActiveLanguageId(null);
+      if (user) {
+        await user.updateMetadata({
+          unsafeMetadata: {
+            ...user.unsafeMetadata,
+            selectedLanguageId: null,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error clearing language state:', error);
+    }
+  };
 
   return (
     <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-text px-6">
@@ -67,6 +86,16 @@ export default function Index() {
       >
         <Text className="text-white font-poppins-semibold text-base">
           Sign Out
+        </Text>
+      </Pressable>
+
+      {/* Clear Language State (Test) */}
+      <Pressable 
+        onPress={handleClearLanguage} 
+        className="mt-4 px-6 py-3 bg-neutral-surface dark:bg-[#1E2540] border border-neutral-border dark:border-[#2E375B] rounded-xl active:opacity-80"
+      >
+        <Text className="text-neutral-text-secondary dark:text-[#9CA3AF] font-poppins-semibold text-[13px]">
+          Clear Language State (Test)
         </Text>
       </Pressable>
     </View>
