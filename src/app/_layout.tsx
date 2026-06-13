@@ -47,6 +47,7 @@ function RootLayoutNav() {
         <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="signup" />
         <Stack.Screen name="signin" />
+        <Stack.Screen name="language-select" />
       </Stack>
     </ThemeProvider>
   );
