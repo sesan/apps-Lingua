@@ -46,3 +46,15 @@ This document logs critical learnings, gotchas, and architectural choices made d
   };
   ```
   This guarantees instant local loads on both mobile and web, which can later be synced to Clerk's `user.unsafeMetadata` on the server when logged in.
+
+---
+
+### 4. UI Implementation: Design Review & Asset Mapping
+* **Problem**: Implementing UI layouts from text prompts alone can lead to mismatch with actual high-fidelity designs, missing custom assets (e.g., `palace.png` for Continue Learning card, `treasure.png` for Daily Goal card), or visual components (e.g., custom header stats row, green Next Up card).
+* **Solution**:
+  1. Always inspect image design specs (like `.png` mockups in `prompt_material/` or `prompts/`) *first* before writing layout code.
+  2. Audit `assets/` to map mockup illustrations to existing files to ensure correct graphics are embedded.
+  3. Customize theme integrations to react to active configurations (e.g., translating greetings to "Hola", "Bonjour", "Konnichiwa" based on the user's selected language) to make the app feel extremely premium.
+  4. Write clean custom SVG elements for standard icons (like bell, headphones, book) to ensure absolute cross-platform visual consistency.
+
+

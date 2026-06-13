@@ -159,6 +159,9 @@ export default function SignInScreen() {
         <View className="flex-row items-center justify-start py-2">
           <Pressable 
             onPress={handleBack} 
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            accessibilityHint="Returns to the onboarding screen"
             className="w-10 h-10 items-center justify-center rounded-full bg-neutral-surface dark:bg-neutral-800 active:scale-95 transition-transform"
           >
             <SymbolView 
@@ -180,11 +183,12 @@ export default function SignInScreen() {
         </View>
 
         {/* Mascot Center Illustration */}
-        <View className="items-center justify-center my-4">
+        <View className="items-center justify-center my-4" accessible={false} importantForAccessibility="no-hide-descendants">
           <Image 
             source={require('@/assets/images/mascot-auth.png')} 
             className="w-[180px] h-[180px]"
             contentFit="contain"
+            accessible={false}
           />
         </View>
 
@@ -211,10 +215,15 @@ export default function SignInScreen() {
               }}
               onFocus={() => setIsEmailFocused(true)}
               onBlur={() => setIsEmailFocused(false)}
+              accessibilityLabel="Email input"
+              accessibilityHint="Enter your email address to sign in"
             />
           </View>
           {emailError ? (
-            <Text className="text-xs font-poppins text-red-500 mt-1 pl-2">
+            <Text 
+              accessibilityRole="alert"
+              className="text-xs font-poppins text-red-500 mt-1 pl-2"
+            >
               {emailError}
             </Text>
           ) : null}
@@ -223,6 +232,8 @@ export default function SignInScreen() {
         {/* Sign In Button */}
         <View className="w-full mt-6">
           <Pressable 
+            accessibilityRole="button"
+            accessibilityLabel="Sign In"
             className="w-full bg-[#6C4EF5] dark:bg-[#5B3BF6] py-4 px-6 rounded-2xl flex-row items-center justify-center active:scale-[0.99] active:opacity-95 shadow-md shadow-[#6C4EF5]/20"
             onPress={handleSignIn}
           >
@@ -246,6 +257,8 @@ export default function SignInScreen() {
           {/* Google */}
           <Pressable 
             onPress={() => handleOAuth('oauth_google')}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with Google"
             className="w-full flex-row items-center justify-center bg-white dark:bg-neutral-800 border border-[#E5E7EB] dark:border-neutral-700 py-3.5 rounded-2xl active:scale-[0.99] active:bg-neutral-50 dark:active:bg-neutral-700/50"
           >
             <View className="absolute left-6">
@@ -259,6 +272,8 @@ export default function SignInScreen() {
           {/* Facebook */}
           <Pressable 
             onPress={() => handleOAuth('oauth_facebook')}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with Facebook"
             className="w-full flex-row items-center justify-center bg-white dark:bg-neutral-800 border border-[#E5E7EB] dark:border-neutral-700 py-3.5 rounded-2xl active:scale-[0.99] active:bg-neutral-50 dark:active:bg-neutral-700/50"
           >
             <View className="absolute left-6">
@@ -272,6 +287,8 @@ export default function SignInScreen() {
           {/* Apple */}
           <Pressable 
             onPress={() => handleOAuth('oauth_apple')}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with Apple"
             className="w-full flex-row items-center justify-center bg-white dark:bg-neutral-800 border border-[#E5E7EB] dark:border-neutral-700 py-3.5 rounded-2xl active:scale-[0.99] active:bg-neutral-50 dark:active:bg-neutral-700/50"
           >
             <View className="absolute left-6">
@@ -285,10 +302,15 @@ export default function SignInScreen() {
 
         {/* Footer Link */}
         <View className="flex-row justify-center items-center mt-8 mb-6">
-          <Text className="text-sm font-poppins text-[#6B7280] dark:text-[#9CA3AF]">
+          <Text className="text-sm font-poppins text-[#4B5563] dark:text-[#9CA3AF]">
             Don't have an account?{' '}
           </Text>
-          <Pressable onPress={() => router.push('/signup')} className="active:opacity-70">
+          <Pressable 
+            onPress={() => router.push('/signup')} 
+            accessibilityRole="link"
+            accessibilityLabel="Sign up"
+            className="active:opacity-70"
+          >
             <Text className="text-sm font-poppins-semibold text-[#6C4EF5] dark:text-[#8E75FF]">
               Sign up
             </Text>

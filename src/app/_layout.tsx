@@ -6,7 +6,8 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ClerkProvider, useAuth } from '@clerk/expo';
-import { tokenCache } from '@clerk/expo/token-cache';
+import { tokenCache } from '@/utils/token-cache';
+import { useLanguageStore } from '@/store/language-store';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 
@@ -24,20 +25,35 @@ function RootLayoutNav() {
   const { isLoaded, isSignedIn } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  
+  const activeLanguageId = useLanguageStore((state) => state.activeLanguageId);
+  const isHydrated = useLanguageStore((state) => state.isHydrated);
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || !isHydrated) return;
 
     const inAuthGroup = segments[0] === 'signin' || segments[0] === 'signup' || segments[0] === 'onboarding';
 
-    if (!isSignedIn && !inAuthGroup) {
-      // Redirect to onboarding if not signed in
-      router.replace('/onboarding');
-    } else if (isSignedIn && inAuthGroup) {
-      // Redirect to home if signed in but on auth screens
-      router.replace('/(tabs)');
+    if (!isSignedIn) {
+      if (!inAuthGroup) {
+        // Redirect to onboarding if not signed in
+        router.replace('/onboarding');
+      }
+    } else {
+      // User is signed in
+      if (!activeLanguageId) {
+        // Must select a language first
+        if (segments[0] !== 'language-select') {
+          router.replace('/language-select');
+        }
+      } else {
+        // Already selected language
+        if (inAuthGroup) {
+          router.replace('/(tabs)');
+        }
+      }
     }
-  }, [isSignedIn, isLoaded, segments]);
+  }, [isSignedIn, isLoaded, isHydrated, activeLanguageId, segments]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
