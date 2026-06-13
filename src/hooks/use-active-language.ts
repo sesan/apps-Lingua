@@ -13,7 +13,11 @@ const getStoredItem = async (key: string): Promise<string | null> => {
       return null;
     }
   }
-  return AsyncStorage.getItem(key);
+  try {
+    return await AsyncStorage.getItem(key);
+  } catch (e) {
+    return null;
+  }
 };
 
 const setStoredItem = async (key: string, value: string): Promise<void> => {
@@ -23,7 +27,9 @@ const setStoredItem = async (key: string, value: string): Promise<void> => {
     } catch (e) {}
     return;
   }
-  return AsyncStorage.setItem(key, value);
+  try {
+    await AsyncStorage.setItem(key, value);
+  } catch (e) {}
 };
 
 export function useActiveLanguage() {
