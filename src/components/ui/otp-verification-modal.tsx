@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { useColorScheme, KeyboardAvoidingView, Platform, Modal, TextInput as RNTextInput } from 'react-native';
+import { useColorScheme, KeyboardAvoidingView, Platform, Modal, TextInput as RNTextInput, Alert } from 'react-native';
 import { View, Text, Pressable } from '@/tw';
 
 export interface OTPVerificationModalProps {
@@ -8,6 +8,7 @@ export interface OTPVerificationModalProps {
   code: string;
   onCodeChange: (text: string) => void;
   mode: 'signin' | 'signup';
+  onResendCode?: () => Promise<void> | void;
 }
 
 export const OTPVerificationModal = ({
@@ -16,6 +17,7 @@ export const OTPVerificationModal = ({
   code,
   onCodeChange,
   mode,
+  onResendCode,
 }: OTPVerificationModalProps) => {
   const scheme = useColorScheme();
   const codeInputRef = useRef<RNTextInput>(null);
@@ -101,7 +103,22 @@ export const OTPVerificationModal = ({
               <Text className="text-sm font-poppins text-[#6B7280] dark:text-[#9CA3AF]">
                 Didn't receive the code?
               </Text>
-              <Pressable onPress={() => alert('Code resent!')} className="active:opacity-70">
+              <Pressable 
+                onPress={async () => {
+                  if (onResendCode) {
+                    try {
+                      await onResendCode();
+                      Alert.alert('Success', 'Code resent successfully!');
+                    } catch (err: any) {
+                      const errMsg = err.errors?.[0]?.longMessage || 'Failed to resend code.';
+                      Alert.alert('Error', errMsg);
+                    }
+                  } else {
+                    Alert.alert('Info', 'Code resent!');
+                  }
+                }} 
+                className="active:opacity-70"
+              >
                 <Text className="text-sm font-poppins-semibold text-[#6C4EF5] dark:text-[#8E75FF]">
                   Resend Code
                 </Text>

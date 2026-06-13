@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
-import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Pressable, Text, useColorScheme, View } from 'react-native';
+import { useAuth } from '@clerk/expo';
 
 export default function Index() {
   const scheme = useColorScheme();
+  const { signOut } = useAuth();
 
   return (
     <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-text px-6">
@@ -27,14 +28,15 @@ export default function Index() {
         Your ultimate AI-powered companion for immersive language learning.
       </Text>
 
-      {/* Call to Action Navigation Link */}
-      <Link href="/onboarding" asChild>
-        <Pressable className="bg-[#6C4EF5] dark:bg-[#5B3BF6] px-8 py-4 rounded-2xl active:opacity-90 shadow-md">
-          <Text className="text-white font-poppins-semibold text-base">
-            Get Started
-          </Text>
-        </Pressable>
-      </Link>
+      {/* Sign Out Button */}
+      <Pressable 
+        onPress={() => signOut()} 
+        className="bg-[#6C4EF5] dark:bg-[#5B3BF6] px-8 py-4 rounded-2xl active:opacity-90 shadow-md"
+      >
+        <Text className="text-white font-poppins-semibold text-base">
+          Sign Out
+        </Text>
+      </Pressable>
     </View>
   );
 }
