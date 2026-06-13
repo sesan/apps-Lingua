@@ -1,0 +1,232 @@
+import React, { useState } from 'react';
+import { useColorScheme, KeyboardAvoidingView, Platform } from 'react-native';
+import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SymbolView } from 'expo-symbols';
+import { View, Text, Pressable, ScrollView, TextInput } from '@/tw';
+import { Image } from '@/tw/image';
+import { GoogleIcon, FacebookIcon, AppleIcon } from '@/components/social-icons';
+import { OTPVerificationModal } from '@/components/ui/otp-verification-modal';
+
+const isValidEmail = (emailStr: string) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(emailStr);
+};
+
+export default function SignInScreen() {
+  const insets = useSafeAreaInsets();
+  const scheme = useColorScheme();
+  const router = useRouter();
+
+  // Form states
+  const [email, setEmail] = useState('');
+  const [isEmailFocused, setIsEmailFocused] = useState(false);
+  const [emailError, setEmailError] = useState('');
+
+  // Verification modal states
+  const [showModal, setShowModal] = useState(false);
+  const [code, setCode] = useState('');
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/onboarding');
+    }
+  };
+
+  const handleSignIn = () => {
+    if (!email) {
+      setEmailError('Email is required');
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setEmailError('Please enter a valid email address');
+      return;
+    }
+    setEmailError('');
+    setCode('');
+    setShowModal(true);
+  };
+
+  const handleCodeChange = (text: string) => {
+    const cleaned = text.replace(/[^0-9]/g, '');
+    setCode(cleaned);
+
+    if (cleaned.length === 6) {
+      // Clean transition delay
+      setTimeout(() => {
+        setShowModal(false);
+        router.replace('/(tabs)');
+      }, 300);
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      className="flex-1 bg-white dark:bg-neutral-text"
+    >
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <ScrollView
+        contentContainerClassName="flex-grow px-6"
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        style={{
+          paddingTop: Math.max(insets.top, 16),
+          paddingBottom: Math.max(insets.bottom, 16),
+        }}
+      >
+        {/* Navigation Header */}
+        <View className="flex-row items-center justify-start py-2">
+          <Pressable 
+            onPress={handleBack} 
+            className="w-10 h-10 items-center justify-center rounded-full bg-neutral-surface dark:bg-neutral-800 active:scale-95 transition-transform"
+          >
+            <SymbolView 
+              tintColor={scheme === 'dark' ? '#FFFFFF' : '#0D132B'} 
+              name={{ ios: 'chevron.left', android: 'chevron_left', web: 'chevron_left' }}
+              size={24}
+            />
+          </Pressable>
+        </View>
+
+        {/* Header Text */}
+        <View className="mt-4">
+          <Text className="text-[32px] font-poppins-bold text-[#0D132B] dark:text-white leading-[38.4px]">
+            Welcome back
+          </Text>
+          <Text className="text-[15px] font-poppins text-[#6B7280] dark:text-[#9CA3AF] mt-1 leading-[22px]">
+            Continue your language journey today ✨
+          </Text>
+        </View>
+
+        {/* Mascot Center Illustration */}
+        <View className="items-center justify-center my-4">
+          <Image 
+            source={require('@/assets/images/mascot-auth.png')} 
+            className="w-[180px] h-[180px]"
+            contentFit="contain"
+          />
+        </View>
+
+        {/* Form Inputs */}
+        <View className="w-full gap-y-1">
+          {/* Email Box */}
+          <View 
+            className={`w-full bg-[#F6F7FB] dark:bg-neutral-800 border ${isEmailFocused ? 'border-[#6C4EF5] dark:border-[#8E75FF] bg-white' : 'border-[#E5E7EB] dark:border-neutral-700'} rounded-2xl px-4 py-3`}
+          >
+            <Text className="text-[11px] font-poppins-medium text-[#6B7280] dark:text-[#9CA3AF] mb-0.5">
+              Email
+            </Text>
+            <TextInput
+              className="text-base font-poppins text-[#0D132B] dark:text-white p-0 m-0 w-full"
+              placeholder="alex@gmail.com"
+              placeholderTextColor="#A0AEC0"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (emailError) setEmailError('');
+              }}
+              onFocus={() => setIsEmailFocused(true)}
+              onBlur={() => setIsEmailFocused(false)}
+            />
+          </View>
+          {emailError ? (
+            <Text className="text-xs font-poppins text-red-500 mt-1 pl-2">
+              {emailError}
+            </Text>
+          ) : null}
+        </View>
+
+        {/* Sign In Button */}
+        <View className="w-full mt-6">
+          <Pressable 
+            className="w-full bg-[#6C4EF5] dark:bg-[#5B3BF6] py-4 px-6 rounded-2xl flex-row items-center justify-center active:scale-[0.99] active:opacity-95 shadow-md shadow-[#6C4EF5]/20"
+            onPress={handleSignIn}
+          >
+            <Text className="text-white font-poppins-semibold text-[17px]">
+              Sign In
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Divider */}
+        <View className="flex-row items-center justify-center my-6">
+          <View className="flex-1 h-[1px] bg-[#E5E7EB] dark:bg-neutral-700" />
+          <Text className="text-[13px] font-poppins text-[#6B7280] dark:text-[#9CA3AF] mx-4">
+            or continue with
+          </Text>
+          <View className="flex-1 h-[1px] bg-[#E5E7EB] dark:bg-neutral-700" />
+        </View>
+
+        {/* Social Buttons */}
+        <View className="w-full gap-y-3">
+          {/* Google */}
+          <Pressable 
+            onPress={handleSignIn}
+            className="w-full flex-row items-center justify-center bg-white dark:bg-neutral-800 border border-[#E5E7EB] dark:border-neutral-700 py-3.5 rounded-2xl active:scale-[0.99] active:bg-neutral-50 dark:active:bg-neutral-700/50"
+          >
+            <View className="absolute left-6">
+              <GoogleIcon />
+            </View>
+            <Text className="text-[15px] font-poppins-medium text-[#0D132B] dark:text-white">
+              Continue with Google
+            </Text>
+          </Pressable>
+
+          {/* Facebook */}
+          <Pressable 
+            onPress={handleSignIn}
+            className="w-full flex-row items-center justify-center bg-white dark:bg-neutral-800 border border-[#E5E7EB] dark:border-neutral-700 py-3.5 rounded-2xl active:scale-[0.99] active:bg-neutral-50 dark:active:bg-neutral-700/50"
+          >
+            <View className="absolute left-6">
+              <FacebookIcon />
+            </View>
+            <Text className="text-[15px] font-poppins-medium text-[#0D132B] dark:text-white">
+              Continue with Facebook
+            </Text>
+          </Pressable>
+
+          {/* Apple */}
+          <Pressable 
+            onPress={handleSignIn}
+            className="w-full flex-row items-center justify-center bg-white dark:bg-neutral-800 border border-[#E5E7EB] dark:border-neutral-700 py-3.5 rounded-2xl active:scale-[0.99] active:bg-neutral-50 dark:active:bg-neutral-700/50"
+          >
+            <View className="absolute left-6">
+              <AppleIcon color={scheme === 'dark' ? '#FFFFFF' : '#0D132B'} />
+            </View>
+            <Text className="text-[15px] font-poppins-medium text-[#0D132B] dark:text-white">
+              Continue with Apple
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Footer Link */}
+        <View className="flex-row justify-center items-center mt-8 mb-6">
+          <Text className="text-sm font-poppins text-[#6B7280] dark:text-[#9CA3AF]">
+            Don't have an account?{' '}
+          </Text>
+          <Pressable onPress={() => router.push('/signup')} className="active:opacity-70">
+            <Text className="text-sm font-poppins-semibold text-[#6C4EF5] dark:text-[#8E75FF]">
+              Sign up
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+
+      {/* Verification Modal */}
+      <OTPVerificationModal
+        visible={showModal}
+        onClose={() => setShowModal(false)}
+        code={code}
+        onCodeChange={handleCodeChange}
+        mode="signin"
+      />
+    </KeyboardAvoidingView>
+  );
+}

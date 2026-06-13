@@ -37,6 +37,8 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="signup" />
+        <Stack.Screen name="signin" />
       </Stack>
     </ThemeProvider>
   );
