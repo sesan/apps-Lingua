@@ -4,12 +4,92 @@
 
 @import "nativewind/theme";
 
+@layer theme {
+  @theme {
+    /* Custom Font Families for Poppins */
+    --font-poppins: "Poppins-Regular", sans-serif;
+    --font-poppins-medium: "Poppins-Medium", sans-serif;
+    --font-poppins-semibold: "Poppins-SemiBold", sans-serif;
+    --font-poppins-bold: "Poppins-Bold", sans-serif;
+
+    /* Custom Brand Colors */
+    --color-primary: #6C4EF5;
+    --color-primary-deep: #5B3BF6;
+    --color-primary-blue: #4D8BFF;
+    --color-primary-green: #21C16B;
+
+    /* Semantic Status Colors */
+    --color-success: #21C16B;
+    --color-warning: #FFC800;
+    --color-streak: #FF8A00;
+    --color-error: #FF4D4F;
+    --color-info: #4D8BFF;
+
+    /* Neutral Scale */
+    --color-neutral-text: #0D132B;
+    --color-neutral-text-secondary: #6B7280;
+    --color-neutral-border: #E5E7EB;
+    --color-neutral-surface: #F6F7FB;
+    --color-neutral-background: #FFFFFF;
+
+    /* Border Radii */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+  }
+}
+
+/* Fallback default fonts */
 :root {
-  --font-display:
-    Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
-    Segoe UI Symbol, Noto Color Emoji;
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
-  --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
-  --font-serif: Georgia, 'Times New Roman', serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+}
+
+/* Design System Typography Utilities */
+@utility h1 {
+  font-family: var(--font-poppins-bold);
+  font-size: 32px;
+  line-height: 38.4px;
+}
+
+@utility h2 {
+  font-family: var(--font-poppins-semibold);
+  font-size: 24px;
+  line-height: 31.2px;
+}
+
+@utility h3 {
+  font-family: var(--font-poppins-semibold);
+  font-size: 20px;
+  line-height: 26px;
+}
+
+@utility h4 {
+  font-family: var(--font-poppins-medium);
+  font-size: 16px;
+  line-height: 22.4px;
+}
+
+@utility body-large {
+  font-family: var(--font-poppins);
+  font-size: 16px;
+  line-height: 25.6px;
+}
+
+@utility body-medium {
+  font-family: var(--font-poppins);
+  font-size: 14px;
+  line-height: 22.4px;
+}
+
+@utility body-small {
+  font-family: var(--font-poppins);
+  font-size: 13px;
+  line-height: 20.8px;
+}
+
+@utility caption {
+  font-family: var(--font-poppins);
+  font-size: 11px;
+  line-height: 15.4px;
 }

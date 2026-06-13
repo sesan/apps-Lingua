@@ -1,0 +1,35 @@
+import { useCssElement } from "react-native-css";
+import React from "react";
+import { StyleSheet } from "react-native";
+import Animated from "react-native-reanimated";
+import { Image as RNImage } from "expo-image";
+
+const AnimatedExpoImage = Animated.createAnimatedComponent(RNImage);
+
+function CSSImage(props: React.ComponentProps<typeof AnimatedExpoImage>) {
+  // @ts-expect-error: Remap objectFit style to contentFit property
+  const { objectFit, objectPosition, ...style } =
+    StyleSheet.flatten(props.style) || {};
+
+  return (
+    <AnimatedExpoImage
+      contentFit={objectFit as any}
+      contentPosition={objectPosition}
+      {...props}
+      source={
+        typeof props.source === "string" ? { uri: props.source } : props.source
+      }
+      // @ts-expect-error: Style is remapped above
+      style={style}
+    />
+  );
+}
+
+export const Image = (
+  props: React.ComponentProps<typeof CSSImage> & { className?: string }
+) => {
+  return useCssElement(CSSImage as any, props as any, { className: "style" }) as any;
+};
+
+Image.displayName = "CSS(Image)";
+export type ImageProps = React.ComponentProps<typeof Image>;
