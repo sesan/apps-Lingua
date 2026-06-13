@@ -34,7 +34,6 @@ export default function OnboardingScreen() {
           source={require('@/assets/images/moscot-logo.png')} 
           className="w-8 h-8"
           contentFit="contain"
-          accessibilityLabel="Lingua logo"
         />
         <Text className="text-[26px] font-poppins-bold text-[#0D132B] dark:text-white leading-[32px]">
           lingua
@@ -59,14 +58,11 @@ export default function OnboardingScreen() {
           source={require('@/assets/images/mascot-welcome.png')} 
           className="w-[270px] h-[270px] z-10"
           contentFit="contain"
-          accessibilityLabel="Friendly Lingua owl mascot welcoming you"
         />
 
         {/* Floating Speech Bubbles */}
         {/* Bubble 1 (Left): "Hello!" */}
         <View 
-          accessible={true}
-          accessibilityLabel="Hello speech bubble"
           className="absolute left-[-15px] top-[24%] bg-[#E8F2FF] px-4 py-2.5 rounded-2xl rounded-br-sm shadow-sm shadow-black/5 z-20"
         >
           <Text className="text-[15px] font-poppins-medium text-[#0D132B]">
@@ -76,8 +72,6 @@ export default function OnboardingScreen() {
 
         {/* Bubble 2 (Top Right): "¡Hola!" */}
         <View 
-          accessible={true}
-          accessibilityLabel="Hola speech bubble"
           className="absolute right-[-10px] top-[14%] bg-[#F0EEFF] px-4 py-2.5 rounded-2xl rounded-bl-sm shadow-sm shadow-black/5 z-20"
         >
           <Text className="text-[15px] font-poppins-medium text-[#6C4EF5]">
@@ -87,8 +81,6 @@ export default function OnboardingScreen() {
 
         {/* Bubble 3 (Bottom Right): "你好!" */}
         <View 
-          accessible={true}
-          accessibilityLabel="Nǐ hǎo speech bubble"
           className="absolute right-[-8px] top-[54%] bg-[#FFEFEF] px-4 py-2.5 rounded-2xl rounded-tl-sm shadow-sm shadow-black/5 z-20"
         >
           <Text className="text-[15px] font-poppins-medium text-[#FF4D4F]">
@@ -100,8 +92,6 @@ export default function OnboardingScreen() {
       {/* CTA Button */}
       <View className="w-full mt-auto">
         <Pressable 
-          accessibilityRole="button"
-          accessibilityLabel="Get Started"
           className="w-full bg-[#6C4EF5] dark:bg-[#5B3BF6] py-4 px-6 rounded-2xl flex-row items-center justify-center relative active:opacity-90 shadow-md shadow-[#6C4EF5]/20 dark:shadow-none"
           onPress={handleGetStarted}
         >

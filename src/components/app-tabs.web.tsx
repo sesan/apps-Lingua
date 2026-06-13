@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   TabList,
   TabListProps,
@@ -7,137 +6,110 @@ import {
   TabTrigger,
   TabTriggerSlotProps,
 } from 'expo-router/ui';
-import { SymbolView, SymbolViewProps } from 'expo-symbols';
-import { Pressable, StyleSheet, useColorScheme, View, Text } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SymbolView } from 'expo-symbols';
+import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { ExternalLink } from './external-link';
+import { ThemedText } from './themed-text';
+import { ThemedView } from './themed-view';
 
-// Tab definitions for web (expo-router/ui headless tabs)
-const TABS: { key: string; href: string; label: string; icon: SymbolViewProps['name'] }[] = [
-  { key: 'home',       href: '/',           label: 'Home',       icon: { ios: 'house.fill',   android: 'home',         web: 'house.fill' } },
-  { key: 'learn',      href: '/learn',      label: 'Learn',      icon: { ios: 'book.fill',    android: 'menu_book',    web: 'book.fill' } },
-  { key: 'ai-teacher', href: '/ai-teacher', label: 'AI Teacher', icon: { ios: 'sparkles',     android: 'auto_awesome', web: 'sparkles' } },
-  { key: 'chat',       href: '/chat',       label: 'Chat',       icon: { ios: 'message.fill', android: 'chat',         web: 'message.fill' } },
-  { key: 'profile',    href: '/profile',    label: 'Profile',    icon: { ios: 'person.fill',  android: 'person',       web: 'person.fill' } },
-];
+import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
 
 export default function AppTabs() {
   return (
     <Tabs>
-      <TabSlot style={{ flex: 1 }} />
+      <TabSlot style={{ height: '100%' }} />
       <TabList asChild>
-        <WebTabBar>
-          {TABS.map((tab) => (
-            <TabTrigger key={tab.key} name={tab.key} href={tab.href as any} asChild>
-              <WebTabButton label={tab.label} icon={tab.icon} />
-            </TabTrigger>
-          ))}
-        </WebTabBar>
+        <CustomTabList>
+          <TabTrigger name="home" href="/" asChild>
+            <TabButton>Home</TabButton>
+          </TabTrigger>
+          <TabTrigger name="explore" href="/explore" asChild>
+            <TabButton>Explore</TabButton>
+          </TabTrigger>
+        </CustomTabList>
       </TabList>
     </Tabs>
   );
 }
 
-// ─── Web Tab Button ───────────────────────────────────────────────────────────
-
-interface WebTabButtonProps extends TabTriggerSlotProps {
-  label?: string;
-  icon?: SymbolViewProps['name'];
-}
-
-export function WebTabButton({ isFocused, label, icon, ...props }: WebTabButtonProps) {
-  const scheme = useColorScheme();
-  const c = Colors[scheme === 'unspecified' ? 'light' : (scheme ?? 'light')];
-
+export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
   return (
-    <Pressable
-      {...props}
-      accessibilityRole="tab"
-      accessibilityState={{ selected: isFocused }}
-      accessibilityLabel={label}
-      style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}
-    >
-      <View
-        style={[
-          styles.tabInner,
-          isFocused && {
-            backgroundColor: c.primary,
-            borderRadius: 24,
-            width: 48,
-            height: 48,
-          },
-        ]}
-      >
-        <SymbolView
-          name={icon ?? { ios: 'circle', android: 'circle', web: 'circle' }}
-          size={22}
-          tintColor={isFocused ? '#FFFFFF' : c.textSecondary}
-          resizeMode="scaleAspectFit"
-        />
-        {!isFocused && (
-          <Text style={[styles.label, { color: c.textSecondary }]} numberOfLines={1}>
-            {label}
-          </Text>
-        )}
-      </View>
+    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
+      <ThemedView
+        type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
+        style={styles.tabButtonView}>
+        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
+          {children}
+        </ThemedText>
+      </ThemedView>
     </Pressable>
   );
 }
 
-// ─── Web Tab Bar Container ────────────────────────────────────────────────────
-
-export function WebTabBar({ children, ...props }: TabListProps) {
+export function CustomTabList(props: TabListProps) {
   const scheme = useColorScheme();
-  const c = Colors[scheme === 'unspecified' ? 'light' : (scheme ?? 'light')];
-  const insets = useSafeAreaInsets();
+  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
 
   return (
-    <View
-      {...props}
-      style={[
-        styles.container,
-        {
-          backgroundColor: c.background,
-          borderTopColor: c.backgroundElement,
-          paddingBottom: insets.bottom,
-        },
-      ]}
-    >
-      {children}
+    <View {...props} style={styles.tabListContainer}>
+      <ThemedView type="backgroundElement" style={styles.innerContainer}>
+        <ThemedText type="smallBold" style={styles.brandText}>
+          Expo Starter
+        </ThemedText>
+
+        {props.children}
+
+        <ExternalLink href="https://docs.expo.dev" asChild>
+          <Pressable style={styles.externalPressable}>
+            <ThemedText type="link">Docs</ThemedText>
+            <SymbolView
+              tintColor={colors.text}
+              name={{ ios: 'arrow.up.right.square', web: 'link' }}
+              size={12}
+            />
+          </Pressable>
+        </ExternalLink>
+      </ThemedView>
     </View>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  container: {
+  tabListContainer: {
+    position: 'absolute',
+    width: '100%',
+    padding: Spacing.three,
+    justifyContent: 'center',
+    alignItems: 'center',
     flexDirection: 'row',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    height: 88,
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 8,
   },
-  tabButton: {
-    flex: 1,
+  innerContainer: {
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.five,
+    borderRadius: Spacing.five,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    height: 64,
+    flexGrow: 1,
+    gap: Spacing.two,
+    maxWidth: MaxContentWidth,
   },
-  tabInner: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 3,
-    minHeight: 38,
-  },
-  label: {
-    fontSize: 10,
-    fontFamily: 'Poppins-Medium',
-    letterSpacing: 0.1,
+  brandText: {
+    marginRight: 'auto',
   },
   pressed: {
     opacity: 0.7,
+  },
+  tabButtonView: {
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.three,
+  },
+  externalPressable: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.one,
+    marginLeft: Spacing.three,
   },
 });
