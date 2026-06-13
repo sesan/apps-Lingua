@@ -1,10 +1,16 @@
-import { Image } from 'expo-image';
-import { Link } from 'expo-router';
+import { Image } from '@/tw/image';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, Text, useColorScheme, View } from 'react-native';
+import { View, Text, Pressable } from '@/tw';
+import { useColorScheme } from 'react-native';
+import { useAuth } from '@clerk/expo';
+import { useRouter } from 'expo-router';
+import { useActiveLanguage } from '@/hooks/use-active-language';
 
 export default function Index() {
   const scheme = useColorScheme();
+  const { signOut } = useAuth();
+  const router = useRouter();
+  const { activeLanguage } = useActiveLanguage();
 
   return (
     <View className="flex-1 justify-center items-center bg-white dark:bg-neutral-text px-6">
@@ -27,14 +33,42 @@ export default function Index() {
         Your ultimate AI-powered companion for immersive language learning.
       </Text>
 
-      {/* Call to Action Navigation Link */}
-      <Link href="/onboarding" asChild>
-        <Pressable className="bg-[#6C4EF5] dark:bg-[#5B3BF6] px-8 py-4 rounded-2xl active:opacity-90 shadow-md">
-          <Text className="text-white font-poppins-semibold text-base">
-            Get Started
+      {/* Active Language Card */}
+      <View className="w-full max-w-[320px] bg-neutral-surface dark:bg-[#1E2540] p-4 rounded-2xl border border-neutral-border dark:border-[#2E375B] flex-row items-center justify-between mb-8 shadow-sm">
+        <View className="flex-row items-center gap-3">
+          <Image 
+            source={activeLanguage.flag} 
+            className="w-10 h-7 rounded-md"
+            contentFit="cover"
+          />
+          <View>
+            <Text className="text-[11px] font-poppins text-neutral-text-secondary dark:text-[#9CA3AF] uppercase tracking-wider">
+              Learning
+            </Text>
+            <Text className="text-base font-poppins-semibold text-[#0D132B] dark:text-white">
+              {activeLanguage.name}
+            </Text>
+          </View>
+        </View>
+        <Pressable 
+          onPress={() => router.push('/language-select')}
+          className="bg-[#6C4EF5]/10 dark:bg-[#6C4EF5]/20 px-4 py-2 rounded-xl active:opacity-80"
+        >
+          <Text className="text-[#6C4EF5] dark:text-[#8E75FF] font-poppins-semibold text-xs">
+            Change
           </Text>
         </Pressable>
-      </Link>
+      </View>
+
+      {/* Sign Out Button */}
+      <Pressable 
+        onPress={() => signOut()} 
+        className="bg-[#6C4EF5] dark:bg-[#5B3BF6] px-8 py-4 rounded-2xl active:opacity-90 shadow-md"
+      >
+        <Text className="text-white font-poppins-semibold text-base">
+          Sign Out
+        </Text>
+      </Pressable>
     </View>
   );
 }

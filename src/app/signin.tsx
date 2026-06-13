@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useColorScheme, KeyboardAvoidingView, Platform } from 'react-native';
+import { useColorScheme, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +8,11 @@ import { View, Text, Pressable, ScrollView, TextInput } from '@/tw';
 import { Image } from '@/tw/image';
 import { GoogleIcon, FacebookIcon, AppleIcon } from '@/components/social-icons';
 import { OTPVerificationModal } from '@/components/ui/otp-verification-modal';
+import { useSignIn, useSSO } from '@clerk/expo';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const isValidEmail = (emailStr: string) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -18,6 +23,9 @@ export default function SignInScreen() {
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme();
   const router = useRouter();
+
+  const { signIn, errors, fetchStatus } = useSignIn();
+  const { startSSOFlow } = useSSO();
 
   // Form states
   const [email, setEmail] = useState('');
@@ -36,7 +44,7 @@ export default function SignInScreen() {
     }
   };
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     if (!email) {
       setEmailError('Email is required');
       return;
@@ -46,20 +54,89 @@ export default function SignInScreen() {
       return;
     }
     setEmailError('');
-    setCode('');
-    setShowModal(true);
+
+    try {
+      const { error } = await signIn.emailCode.sendCode({
+        emailAddress: email,
+      });
+
+      if (error) {
+        console.error('Sign in error', JSON.stringify(error, null, 2));
+        if (errors.fields.identifier) {
+          setEmailError(errors.fields.identifier.longMessage || errors.fields.identifier.message);
+        } else {
+          setEmailError(error.longMessage || error.message);
+        }
+        return;
+      }
+
+      setCode('');
+      setShowModal(true);
+    } catch (err: any) {
+      console.error('Sign in catch error', err);
+      setEmailError(err.message || 'Failed to sign in. Please try again.');
+    }
   };
 
-  const handleCodeChange = (text: string) => {
+  const handleCodeChange = async (text: string) => {
     const cleaned = text.replace(/[^0-9]/g, '');
     setCode(cleaned);
 
     if (cleaned.length === 6) {
-      // Clean transition delay
-      setTimeout(() => {
-        setShowModal(false);
-        router.replace('/(tabs)');
-      }, 300);
+      try {
+        const { error } = await signIn.emailCode.verifyCode({
+          code: cleaned,
+        });
+
+        if (error) {
+          console.error('Verification error', JSON.stringify(error, null, 2));
+          Alert.alert('Verification Failed', error.longMessage || error.message);
+          return;
+        }
+
+        if (signIn.status === 'complete') {
+          const { error: finalizeError } = await signIn.finalize();
+          if (finalizeError) {
+            Alert.alert('Activation Failed', finalizeError.longMessage || finalizeError.message);
+            return;
+          }
+          setShowModal(false);
+          router.replace('/');
+        } else {
+          console.warn('Sign-in not complete:', signIn);
+          Alert.alert('Sign-in Incomplete', 'Additional factors are required.');
+        }
+      } catch (err: any) {
+        console.error('Verification catch error', err);
+        Alert.alert('Verification Failed', err.message || 'An unexpected error occurred.');
+      }
+    }
+  };
+
+  const handleResendCode = async () => {
+    const { error } = await signIn.emailCode.sendCode({
+      emailAddress: email,
+    });
+    if (error) {
+      throw error;
+    }
+  };
+
+  const handleOAuth = async (strategy: 'oauth_google' | 'oauth_facebook' | 'oauth_apple') => {
+    try {
+      const { createdSessionId, setActive: setOAuthActive } = await startSSOFlow({
+        strategy,
+        redirectUrl: Linking.createURL('/oauth-callback', { scheme: 'reactaiapp' }),
+      });
+
+      if (createdSessionId && setOAuthActive) {
+        await setOAuthActive({ session: createdSessionId });
+        router.replace('/');
+      }
+    } catch (err: any) {
+      console.error('OAuth error', JSON.stringify(err, null, 2));
+      const errMsg = err.errors?.[0]?.longMessage || err.message || 'OAuth flow failed.';
+      Alert.alert('Authentication Failed', errMsg);
     }
   };
 
@@ -168,7 +245,7 @@ export default function SignInScreen() {
         <View className="w-full gap-y-3">
           {/* Google */}
           <Pressable 
-            onPress={handleSignIn}
+            onPress={() => handleOAuth('oauth_google')}
             className="w-full flex-row items-center justify-center bg-white dark:bg-neutral-800 border border-[#E5E7EB] dark:border-neutral-700 py-3.5 rounded-2xl active:scale-[0.99] active:bg-neutral-50 dark:active:bg-neutral-700/50"
           >
             <View className="absolute left-6">
@@ -181,7 +258,7 @@ export default function SignInScreen() {
 
           {/* Facebook */}
           <Pressable 
-            onPress={handleSignIn}
+            onPress={() => handleOAuth('oauth_facebook')}
             className="w-full flex-row items-center justify-center bg-white dark:bg-neutral-800 border border-[#E5E7EB] dark:border-neutral-700 py-3.5 rounded-2xl active:scale-[0.99] active:bg-neutral-50 dark:active:bg-neutral-700/50"
           >
             <View className="absolute left-6">
@@ -194,7 +271,7 @@ export default function SignInScreen() {
 
           {/* Apple */}
           <Pressable 
-            onPress={handleSignIn}
+            onPress={() => handleOAuth('oauth_apple')}
             className="w-full flex-row items-center justify-center bg-white dark:bg-neutral-800 border border-[#E5E7EB] dark:border-neutral-700 py-3.5 rounded-2xl active:scale-[0.99] active:bg-neutral-50 dark:active:bg-neutral-700/50"
           >
             <View className="absolute left-6">
@@ -226,6 +303,7 @@ export default function SignInScreen() {
         code={code}
         onCodeChange={handleCodeChange}
         mode="signin"
+        onResendCode={handleResendCode}
       />
     </KeyboardAvoidingView>
   );

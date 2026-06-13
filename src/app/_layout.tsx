@@ -1,19 +1,59 @@
 import '@/global.css';
 
-import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, ThemeProvider, Stack, useSegments, useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { ClerkProvider, useAuth } from '@clerk/expo';
+import { tokenCache } from '@clerk/expo/token-cache';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
+if (!publishableKey) {
+  throw new Error('Add your Clerk Publishable Key to the .env file');
+}
+
+function RootLayoutNav() {
+  const colorScheme = useColorScheme();
+  const { isLoaded, isSignedIn } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const inAuthGroup = segments[0] === 'signin' || segments[0] === 'signup' || segments[0] === 'onboarding';
+
+    if (!isSignedIn && !inAuthGroup) {
+      // Redirect to onboarding if not signed in
+      router.replace('/onboarding');
+    } else if (isSignedIn && inAuthGroup) {
+      // Redirect to home if signed in but on auth screens
+      router.replace('/(tabs)');
+    }
+  }, [isSignedIn, isLoaded, segments]);
+
+  return (
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <AnimatedSplashOverlay />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="signup" />
+        <Stack.Screen name="signin" />
+        <Stack.Screen name="language-select" />
+      </Stack>
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     'Poppins-Regular': require('@/assets/fonts/Poppins-Regular.ttf'),
     'Poppins-Medium': require('@/assets/fonts/Poppins-Medium.ttf'),
@@ -32,14 +72,8 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="onboarding" options={{ presentation: 'fullScreenModal' }} />
-        <Stack.Screen name="signup" />
-        <Stack.Screen name="signin" />
-      </Stack>
-    </ThemeProvider>
+    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <RootLayoutNav />
+    </ClerkProvider>
   );
 }

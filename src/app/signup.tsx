@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useColorScheme, KeyboardAvoidingView, Platform } from 'react-native';
+import { useColorScheme, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +8,11 @@ import { View, Text, Pressable, ScrollView, TextInput } from '@/tw';
 import { Image } from '@/tw/image';
 import { GoogleIcon, FacebookIcon, AppleIcon } from '@/components/social-icons';
 import { OTPVerificationModal } from '@/components/ui/otp-verification-modal';
+import { useSignUp, useSSO } from '@clerk/expo';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const validateEmail = (emailStr: string) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,6 +32,9 @@ export default function SignUpScreen() {
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme();
   const router = useRouter();
+
+  const { signUp, errors, fetchStatus } = useSignUp();
+  const { startSSOFlow } = useSSO();
 
   // Form states
   const [email, setEmail] = useState('');
@@ -49,7 +57,7 @@ export default function SignUpScreen() {
     }
   };
 
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     let isValid = true;
 
     if (!email) {
@@ -72,22 +80,98 @@ export default function SignUpScreen() {
       setPasswordError('');
     }
 
-    if (isValid) {
+    if (!isValid) return;
+
+    try {
+      const { error } = await signUp.password({
+        emailAddress: email,
+        password,
+      });
+
+      if (error) {
+        console.error('Sign up error', JSON.stringify(error, null, 2));
+        if (errors.fields.emailAddress) {
+          setEmailError(errors.fields.emailAddress.longMessage || errors.fields.emailAddress.message);
+        } else if (errors.fields.password) {
+          setPasswordError(errors.fields.password.longMessage || errors.fields.password.message);
+        } else {
+          Alert.alert('Registration Error', error.longMessage || error.message);
+        }
+        return;
+      }
+
+      const { error: sendError } = await signUp.verifications.sendEmailCode();
+      if (sendError) {
+        console.error('Send verification code error', JSON.stringify(sendError, null, 2));
+        Alert.alert('Verification Error', sendError.longMessage || sendError.message);
+        return;
+      }
+
       setCode('');
       setShowModal(true);
+    } catch (err: any) {
+      console.error('Registration Catch Error', err);
+      Alert.alert('Registration Error', err.message || 'Failed to start registration.');
     }
   };
 
-  const handleCodeChange = (text: string) => {
+  const handleCodeChange = async (text: string) => {
     const cleaned = text.replace(/[^0-9]/g, '');
     setCode(cleaned);
 
     if (cleaned.length === 6) {
-      // Clean transition delay
-      setTimeout(() => {
-        setShowModal(false);
+      try {
+        const { error } = await signUp.verifications.verifyEmailCode({
+          code: cleaned,
+        });
+
+        if (error) {
+          console.error('Verification error', JSON.stringify(error, null, 2));
+          Alert.alert('Verification Failed', error.longMessage || error.message);
+          return;
+        }
+
+        if (signUp.status === 'complete') {
+          const { error: finalizeError } = await signUp.finalize();
+          if (finalizeError) {
+            Alert.alert('Activation Failed', finalizeError.longMessage || finalizeError.message);
+            return;
+          }
+          setShowModal(false);
+          router.replace('/');
+        } else {
+          console.warn('Sign-up not complete:', signUp);
+          Alert.alert('Sign-up Incomplete', 'There are remaining registration requirements.');
+        }
+      } catch (err: any) {
+        console.error('Verification catch error', err);
+        Alert.alert('Verification Failed', err.message || 'An unexpected error occurred.');
+      }
+    }
+  };
+
+  const handleResendCode = async () => {
+    const { error } = await signUp.verifications.sendEmailCode();
+    if (error) {
+      throw error;
+    }
+  };
+
+  const handleOAuth = async (strategy: 'oauth_google' | 'oauth_facebook' | 'oauth_apple') => {
+    try {
+      const { createdSessionId, setActive: setOAuthActive } = await startSSOFlow({
+        strategy,
+        redirectUrl: Linking.createURL('/oauth-callback', { scheme: 'reactaiapp' }),
+      });
+
+      if (createdSessionId && setOAuthActive) {
+        await setOAuthActive({ session: createdSessionId });
         router.replace('/');
-      }, 300);
+      }
+    } catch (err: any) {
+      console.error('OAuth error', JSON.stringify(err, null, 2));
+      const errMsg = err.errors?.[0]?.longMessage || err.message || 'OAuth flow failed.';
+      Alert.alert('Authentication Failed', errMsg);
     }
   };
 
@@ -237,7 +321,7 @@ export default function SignUpScreen() {
         <View className="w-full gap-y-3">
           {/* Google */}
           <Pressable 
-            onPress={handleSignUp}
+            onPress={() => handleOAuth('oauth_google')}
             className="w-full flex-row items-center justify-center bg-white dark:bg-neutral-800 border border-[#E5E7EB] dark:border-neutral-700 py-3.5 rounded-2xl active:scale-[0.99] active:bg-neutral-50 dark:active:bg-neutral-700/50"
           >
             <View className="absolute left-6">
@@ -250,7 +334,7 @@ export default function SignUpScreen() {
 
           {/* Facebook */}
           <Pressable 
-            onPress={handleSignUp}
+            onPress={() => handleOAuth('oauth_facebook')}
             className="w-full flex-row items-center justify-center bg-white dark:bg-neutral-800 border border-[#E5E7EB] dark:border-neutral-700 py-3.5 rounded-2xl active:scale-[0.99] active:bg-neutral-50 dark:active:bg-neutral-700/50"
           >
             <View className="absolute left-6">
@@ -263,7 +347,7 @@ export default function SignUpScreen() {
 
           {/* Apple */}
           <Pressable 
-            onPress={handleSignUp}
+            onPress={() => handleOAuth('oauth_apple')}
             className="w-full flex-row items-center justify-center bg-white dark:bg-neutral-800 border border-[#E5E7EB] dark:border-neutral-700 py-3.5 rounded-2xl active:scale-[0.99] active:bg-neutral-50 dark:active:bg-neutral-700/50"
           >
             <View className="absolute left-6">
@@ -295,6 +379,7 @@ export default function SignUpScreen() {
         code={code}
         onCodeChange={handleCodeChange}
         mode="signup"
+        onResendCode={handleResendCode}
       />
     </KeyboardAvoidingView>
   );
