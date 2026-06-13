@@ -257,6 +257,7 @@ export default function SignUpScreen() {
           {emailError ? (
             <Text 
               accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
               className="text-xs font-poppins text-red-500 mt-1 pl-2"
             >
               {emailError}
@@ -305,6 +306,7 @@ export default function SignUpScreen() {
           {passwordError ? (
             <Text 
               accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
               className="text-xs font-poppins text-red-500 mt-1 pl-2"
             >
               {passwordError}

@@ -29,7 +29,7 @@ export default function LanguageSelectScreen() {
 
   // Sync selectedId when activeLanguageId becomes available
   useEffect(() => {
-    if (activeLanguageId) {
+    if (activeLanguageId && activeLanguageId !== selectedId) {
       setSelectedId(activeLanguageId);
     }
   }, [activeLanguageId]);
