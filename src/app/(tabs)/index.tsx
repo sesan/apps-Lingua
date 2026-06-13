@@ -31,7 +31,7 @@ export default function Index() {
       <Link href="/onboarding" asChild>
         <Pressable className="bg-[#6C4EF5] dark:bg-[#5B3BF6] px-8 py-4 rounded-2xl active:opacity-90 shadow-md">
           <Text className="text-white font-poppins-semibold text-base">
-            Open Onboarding Screen
+            Get Started
           </Text>
         </Pressable>
       </Link>
