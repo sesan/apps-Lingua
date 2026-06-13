@@ -1,22 +1,92 @@
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUser } from '@clerk/expo';
 import { languages } from '../data/languages';
 import { useLanguageStore } from '@/store/language-store';
+
+const getStoredItem = async (key: string): Promise<string | null> => {
+  if (Platform.OS === 'web') {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  }
+  return AsyncStorage.getItem(key);
+};
+
+const setStoredItem = async (key: string, value: string): Promise<void> => {
+  if (Platform.OS === 'web') {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {}
+    return;
+  }
+  return AsyncStorage.setItem(key, value);
+};
 
 export function useActiveLanguage() {
   const { user, isLoaded } = useUser();
   const activeLanguageId = useLanguageStore((state) => state.activeLanguageId);
   const setActiveLanguageId = useLanguageStore((state) => state.setActiveLanguageId);
 
-  // Sync Clerk metadata to Zustand store if store has no language selected
+  // Sync / load language based on user identity or metadata
   useEffect(() => {
-    if (isLoaded && user && !activeLanguageId) {
-      const metadataId = user.unsafeMetadata?.selectedLanguageId as string | undefined;
-      if (metadataId && languages.some(lang => lang.id === metadataId)) {
-        setActiveLanguageId(metadataId);
+    let active = true;
+
+    const loadLanguage = async () => {
+      if (!isLoaded) return;
+
+      const storageKey = user ? `lingua-lang-${user.id}` : 'lingua-lang-anonymous';
+
+      if (user) {
+        // Logged-in user flow:
+        // 1. Prefer Clerk metadata
+        const metadataId = user.unsafeMetadata?.selectedLanguageId as string | undefined;
+        if (metadataId && languages.some(lang => lang.id === metadataId)) {
+          if (active) {
+            setActiveLanguageId(metadataId);
+            await setStoredItem(storageKey, metadataId);
+          }
+          return;
+        }
+
+        // 2. Fall back to per-user local storage
+        const storedId = await getStoredItem(storageKey);
+        if (storedId && languages.some(lang => lang.id === storedId)) {
+          if (active) {
+            setActiveLanguageId(storedId);
+          }
+          return;
+        }
+
+        // 3. Fall back to null/no language selected
+        if (active) {
+          setActiveLanguageId(null);
+        }
+      } else {
+        // Anonymous/signed-out flow:
+        // Load from anonymous key
+        const storedId = await getStoredItem(storageKey);
+        if (storedId && languages.some(lang => lang.id === storedId)) {
+          if (active) {
+            setActiveLanguageId(storedId);
+          }
+        } else {
+          if (active) {
+            setActiveLanguageId(null);
+          }
+        }
       }
-    }
-  }, [isLoaded, user, activeLanguageId, setActiveLanguageId]);
+    };
+
+    loadLanguage();
+
+    return () => {
+      active = false;
+    };
+  }, [isLoaded, user?.id, setActiveLanguageId]);
 
   const changeLanguage = async (id: string) => {
     try {
@@ -27,6 +97,10 @@ export function useActiveLanguage() {
       }
 
       setActiveLanguageId(id);
+
+      // Save to local storage
+      const storageKey = user ? `lingua-lang-${user.id}` : 'lingua-lang-anonymous';
+      await setStoredItem(storageKey, id);
 
       // Sync to Clerk metadata if signed in
       if (isLoaded && user) {

@@ -48,7 +48,7 @@ interface WebTabButtonProps extends TabTriggerSlotProps {
 
 export function WebTabButton({ isFocused, label, icon, ...props }: WebTabButtonProps) {
   const scheme = useColorScheme();
-  const c = Colors[scheme === 'unspecified' ? 'light' : (scheme ?? 'light')];
+  const c = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
   return (
     <Pressable
@@ -89,7 +89,7 @@ export function WebTabButton({ isFocused, label, icon, ...props }: WebTabButtonP
 
 export function WebTabBar({ children, ...props }: TabListProps) {
   const scheme = useColorScheme();
-  const c = Colors[scheme === 'unspecified' ? 'light' : (scheme ?? 'light')];
+  const c = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const insets = useSafeAreaInsets();
 
   return (

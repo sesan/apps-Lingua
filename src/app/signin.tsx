@@ -222,6 +222,7 @@ export default function SignInScreen() {
           {emailError ? (
             <Text 
               accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
               className="text-xs font-poppins text-red-500 mt-1 pl-2"
             >
               {emailError}
