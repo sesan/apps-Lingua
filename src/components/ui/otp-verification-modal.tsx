@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useColorScheme, KeyboardAvoidingView, Platform, Modal, TextInput as RNTextInput, Alert } from 'react-native';
+import { usePostHog } from 'posthog-react-native';
 import { View, Text, Pressable } from '@/tw';
 
 export interface OTPVerificationModalProps {
@@ -21,6 +22,7 @@ export const OTPVerificationModal = ({
 }: OTPVerificationModalProps) => {
   const scheme = useColorScheme();
   const codeInputRef = useRef<RNTextInput>(null);
+  const posthog = usePostHog();
 
   useEffect(() => {
     if (visible) {
@@ -110,20 +112,30 @@ export const OTPVerificationModal = ({
               <Text className="text-sm font-poppins text-[#4B5563] dark:text-[#9CA3AF]">
                 Didn't receive the code?
               </Text>
-              <Pressable 
+              <Pressable
                 onPress={async () => {
                   if (onResendCode) {
                     try {
                       await onResendCode();
+                      posthog.capture('email_verification_resent', { mode });
                       Alert.alert('Success', 'Code resent successfully!');
-                    } catch (err: any) {
-                      const errMsg = err.errors?.[0]?.longMessage || 'Failed to resend code.';
-                      Alert.alert('Error', errMsg);
+                    } catch (err: unknown) {
+                      const errMsg = err instanceof Error ? err.message : 'Failed to resend code.';
+                      posthog.captureException(err instanceof Error ? err : new Error(errMsg));
+
+                      let displayMsg = errMsg;
+                      if (err && typeof err === 'object' && 'errors' in err && Array.isArray(err.errors) && err.errors.length > 0) {
+                        const firstError = err.errors[0];
+                        if (firstError && typeof firstError === 'object' && 'longMessage' in firstError) {
+                          displayMsg = String(firstError.longMessage);
+                        }
+                      }
+                      Alert.alert('Error', displayMsg);
                     }
                   } else {
                     Alert.alert('Info', 'Code resent!');
                   }
-                }} 
+                }}
                 accessibilityRole="button"
                 accessibilityLabel="Resend Code"
                 className="active:opacity-70"

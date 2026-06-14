@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useColorScheme, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { usePostHog } from 'posthog-react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +9,7 @@ import { View, Text, Pressable, ScrollView, TextInput } from '@/tw';
 import { Image } from '@/tw/image';
 import { GoogleIcon, FacebookIcon, AppleIcon } from '@/components/social-icons';
 import { OTPVerificationModal } from '@/components/ui/otp-verification-modal';
-import { useSignIn, useSSO } from '@clerk/expo';
+import { useSignIn, useSSO, useAuth } from '@clerk/expo';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 
@@ -26,6 +27,8 @@ export default function SignInScreen() {
 
   const { signIn, errors, fetchStatus } = useSignIn();
   const { startSSOFlow } = useSSO();
+  const { userId } = useAuth();
+  const posthog = usePostHog();
 
   // Form states
   const [email, setEmail] = useState('');
@@ -54,6 +57,7 @@ export default function SignInScreen() {
       return;
     }
     setEmailError('');
+    posthog.capture('sign_in_started', { method: 'email' });
 
     try {
       const { error } = await signIn.emailCode.sendCode({
@@ -72,9 +76,11 @@ export default function SignInScreen() {
 
       setCode('');
       setShowModal(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Sign in catch error', err);
-      setEmailError(err.message || 'Failed to sign in. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Sign in failed';
+      posthog.captureException(err instanceof Error ? err : new Error(errorMessage));
+      setEmailError(errorMessage || 'Failed to sign in. Please try again.');
     }
   };
 
@@ -100,15 +106,21 @@ export default function SignInScreen() {
             Alert.alert('Activation Failed', finalizeError.longMessage || finalizeError.message);
             return;
           }
+          posthog.capture('sign_in_completed', { method: 'email' });
+          posthog.identify(userId || email, {
+            $set: { email },
+          });
           setShowModal(false);
           router.replace('/');
         } else {
           console.warn('Sign-in not complete:', signIn);
           Alert.alert('Sign-in Incomplete', 'Additional factors are required.');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Verification catch error', err);
-        Alert.alert('Verification Failed', err.message || 'An unexpected error occurred.');
+        const errorMessage = err instanceof Error ? err.message : 'Verification failed';
+        posthog.captureException(err instanceof Error ? err : new Error(errorMessage));
+        Alert.alert('Verification Failed', errorMessage || 'An unexpected error occurred.');
       }
     }
   };
@@ -131,17 +143,30 @@ export default function SignInScreen() {
 
       if (createdSessionId && setOAuthActive) {
         await setOAuthActive({ session: createdSessionId });
+        posthog.capture('sign_in_oauth_completed', { provider: strategy });
         router.replace('/');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('OAuth error', JSON.stringify(err, null, 2));
-      const errMsg = err.errors?.[0]?.longMessage || err.message || 'OAuth flow failed.';
+      const errorMessage = err instanceof Error ? err.message : 'OAuth failed';
+      posthog.captureException(err instanceof Error ? err : new Error(errorMessage));
+
+      let errMsg = 'OAuth flow failed.';
+      if (err && typeof err === 'object' && 'errors' in err && Array.isArray(err.errors) && err.errors.length > 0) {
+        const firstError = err.errors[0];
+        if (firstError && typeof firstError === 'object' && 'longMessage' in firstError) {
+          errMsg = String(firstError.longMessage);
+        }
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
+
       Alert.alert('Authentication Failed', errMsg);
     }
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-white dark:bg-neutral-text"
     >

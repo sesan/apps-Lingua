@@ -16,6 +16,7 @@ const getStoredItem = async (key: string): Promise<string | null> => {
   try {
     return await AsyncStorage.getItem(key);
   } catch (e) {
+    console.error('Failed to get item from AsyncStorage', e);
     return null;
   }
 };
@@ -29,7 +30,9 @@ const setStoredItem = async (key: string, value: string): Promise<void> => {
   }
   try {
     await AsyncStorage.setItem(key, value);
-  } catch (e) {}
+  } catch (e) {
+    console.error('Failed to set item in AsyncStorage', e);
+  }
 };
 
 export function useActiveLanguage() {
