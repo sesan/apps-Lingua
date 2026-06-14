@@ -40,11 +40,17 @@ export default function LanguageSelectScreen() {
   const handleConfirm = async () => {
     if (selectedId) {
       const isFirstSelection = !activeLanguageId;
-      const eventName = isFirstSelection ? 'language_selected' : 'language_changed';
-      posthog.capture(eventName, {
-        language_id: selectedId,
-        previous_language_id: activeLanguageId ?? null,
-      });
+      const isDifferentLanguage = selectedId !== activeLanguageId;
+
+      // Only capture event if first selection or language actually changed
+      if (isFirstSelection || isDifferentLanguage) {
+        const eventName = isFirstSelection ? 'language_selected' : 'language_changed';
+        posthog.capture(eventName, {
+          language_id: selectedId,
+          previous_language_id: activeLanguageId ?? null,
+        });
+      }
+
       await changeLanguage(selectedId);
       if (router.canGoBack()) {
         router.back();

@@ -113,10 +113,11 @@ export default function SignUpScreen() {
 
       setCode('');
       setShowModal(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Registration Catch Error', err);
-      posthog.captureException(err instanceof Error ? err : new Error(err?.message || 'Registration failed'));
-      Alert.alert('Registration Error', err.message || 'Failed to start registration.');
+      const errorMessage = err instanceof Error ? err.message : 'Registration failed';
+      posthog.captureException(err instanceof Error ? err : new Error(errorMessage));
+      Alert.alert('Registration Error', errorMessage || 'Failed to start registration.');
     }
   };
 
@@ -143,20 +144,18 @@ export default function SignUpScreen() {
             return;
           }
           posthog.capture('sign_up_completed', { method: 'email' });
-          posthog.identify(email, {
-            $set: { email },
-            $set_once: { first_seen: new Date().toISOString() },
-          });
+          // User identification is handled by root layout after Clerk session loads
           setShowModal(false);
           router.replace('/');
         } else {
           console.warn('Sign-up not complete:', signUp);
           Alert.alert('Sign-up Incomplete', 'There are remaining registration requirements.');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Verification catch error', err);
-        posthog.captureException(err instanceof Error ? err : new Error(err?.message || 'Verification failed'));
-        Alert.alert('Verification Failed', err.message || 'An unexpected error occurred.');
+        const errorMessage = err instanceof Error ? err.message : 'Verification failed';
+        posthog.captureException(err instanceof Error ? err : new Error(errorMessage));
+        Alert.alert('Verification Failed', errorMessage || 'An unexpected error occurred.');
       }
     }
   };
@@ -180,10 +179,21 @@ export default function SignUpScreen() {
         posthog.capture('sign_up_oauth_completed', { provider: strategy });
         router.replace('/');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('OAuth error', JSON.stringify(err, null, 2));
-      posthog.captureException(err instanceof Error ? err : new Error(err?.message || 'OAuth failed'));
-      const errMsg = err.errors?.[0]?.longMessage || err.message || 'OAuth flow failed.';
+      const errorMessage = err instanceof Error ? err.message : 'OAuth failed';
+      posthog.captureException(err instanceof Error ? err : new Error(errorMessage));
+
+      let errMsg = 'OAuth flow failed.';
+      if (err && typeof err === 'object' && 'errors' in err && Array.isArray(err.errors) && err.errors.length > 0) {
+        const firstError = err.errors[0];
+        if (firstError && typeof firstError === 'object' && 'longMessage' in firstError) {
+          errMsg = String(firstError.longMessage);
+        }
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
+
       Alert.alert('Authentication Failed', errMsg);
     }
   };

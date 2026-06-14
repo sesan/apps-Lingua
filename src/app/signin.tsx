@@ -75,10 +75,11 @@ export default function SignInScreen() {
 
       setCode('');
       setShowModal(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Sign in catch error', err);
-      posthog.captureException(err instanceof Error ? err : new Error(err?.message || 'Sign in failed'));
-      setEmailError(err.message || 'Failed to sign in. Please try again.');
+      const errorMessage = err instanceof Error ? err.message : 'Sign in failed';
+      posthog.captureException(err instanceof Error ? err : new Error(errorMessage));
+      setEmailError(errorMessage || 'Failed to sign in. Please try again.');
     }
   };
 
@@ -105,19 +106,23 @@ export default function SignInScreen() {
             return;
           }
           posthog.capture('sign_in_completed', { method: 'email' });
-          posthog.identify(email, {
-            $set: { email },
-          });
+          const userId = signIn.createdUserId;
+          if (userId) {
+            posthog.identify(userId, {
+              $set: { email },
+            });
+          }
           setShowModal(false);
           router.replace('/');
         } else {
           console.warn('Sign-in not complete:', signIn);
           Alert.alert('Sign-in Incomplete', 'Additional factors are required.');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Verification catch error', err);
-        posthog.captureException(err instanceof Error ? err : new Error(err?.message || 'Verification failed'));
-        Alert.alert('Verification Failed', err.message || 'An unexpected error occurred.');
+        const errorMessage = err instanceof Error ? err.message : 'Verification failed';
+        posthog.captureException(err instanceof Error ? err : new Error(errorMessage));
+        Alert.alert('Verification Failed', errorMessage || 'An unexpected error occurred.');
       }
     }
   };
@@ -143,10 +148,21 @@ export default function SignInScreen() {
         posthog.capture('sign_in_oauth_completed', { provider: strategy });
         router.replace('/');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('OAuth error', JSON.stringify(err, null, 2));
-      posthog.captureException(err instanceof Error ? err : new Error(err?.message || 'OAuth failed'));
-      const errMsg = err.errors?.[0]?.longMessage || err.message || 'OAuth flow failed.';
+      const errorMessage = err instanceof Error ? err.message : 'OAuth failed';
+      posthog.captureException(err instanceof Error ? err : new Error(errorMessage));
+
+      let errMsg = 'OAuth flow failed.';
+      if (err && typeof err === 'object' && 'errors' in err && Array.isArray(err.errors) && err.errors.length > 0) {
+        const firstError = err.errors[0];
+        if (firstError && typeof firstError === 'object' && 'longMessage' in firstError) {
+          errMsg = String(firstError.longMessage);
+        }
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
+
       Alert.alert('Authentication Failed', errMsg);
     }
   };

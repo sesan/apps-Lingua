@@ -1,6 +1,6 @@
 ---
 title: PostHog Setup - Conclusion
-description: Review and fix any errors in the PostHog integration implementation
+description: Create a PostHog dashboard and integration summary report.
 ---
 
 Use the PostHog MCP to create a new dashboard named "Analytics basics (wizard)" based on the events created here. Keep the `(wizard)` tag with that exact casing so anyone browsing PostHog can see the wizard created this dashboard, and so a quick search for `(wizard)` surfaces every wizard-created artifact in one go. Make sure to use the exact same event names as implemented in the code. Populate it with up to five insights, with special emphasis on things like conversion funnels, churn events, and other business critical insights.  

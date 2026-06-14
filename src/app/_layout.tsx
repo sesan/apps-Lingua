@@ -38,9 +38,18 @@ function RootLayoutNav() {
   // Screen tracking for Expo Router
   useEffect(() => {
     if (previousPathname.current !== pathname) {
+      // Whitelist of safe parameter keys to prevent leaking sensitive data
+      const safeParamKeys = ['tab', 'lesson_id', 'language_id', 'section'];
+      const safeParams = Object.keys(params).reduce((acc, key) => {
+        if (safeParamKeys.includes(key)) {
+          acc[key] = params[key];
+        }
+        return acc;
+      }, {} as Record<string, any>);
+
       posthog.screen(pathname, {
         previous_screen: previousPathname.current ?? null,
-        ...params,
+        ...safeParams,
       });
       previousPathname.current = pathname;
     }
@@ -53,6 +62,13 @@ function RootLayoutNav() {
       posthog.identify(userId, email ? { $set: { email } } : undefined);
     }
   }, [isLoaded, isSignedIn, userId]);
+
+  // Reset PostHog on sign-out
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      posthog.reset();
+    }
+  }, [isLoaded, isSignedIn]);
 
   useEffect(() => {
     if (!isLoaded || !isHydrated) return;

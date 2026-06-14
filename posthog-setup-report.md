@@ -1,7 +1,7 @@
 <wizard-report>
 # PostHog post-wizard report
 
-The wizard has completed a deep integration of PostHog analytics into the Lingua language learning app. The integration covers the full user lifecycle: onboarding, authentication (email OTP + OAuth), language selection, and screen navigation. PostHog is configured via `app.config.js` extras and `expo-constants`, keeping secrets out of the bundle. A `PostHogProvider` wraps the app in the root layout, enabling autocapture and `usePostHog()` across all screens. Manual screen tracking fires on every pathname change via Expo Router. Users are identified on sign-in and sign-up (by email) and again when Clerk loads the session (by Clerk user ID), covering email, OAuth, and session-restore flows.
+The wizard has completed a deep integration of PostHog analytics into the Lingua language learning app. The integration covers the full user lifecycle: onboarding, authentication (email OTP + OAuth), language selection, and screen navigation. PostHog is configured via `app.config.js` extras and `expo-constants`. Note that PostHog project tokens (stored in `extra`) are public tokens designed to be client-accessible and are bundled with the app; actual secrets must never be stored this way. A `PostHogProvider` wraps the app in the root layout, enabling autocapture and `usePostHog()` across all screens. Manual screen tracking fires on every pathname change via Expo Router. Users are identified on sign-in and sign-up (by email) and again when Clerk loads the session (by Clerk user ID), covering email, OAuth, and session-restore flows.
 
 | Event | Description | File |
 |-------|-------------|------|

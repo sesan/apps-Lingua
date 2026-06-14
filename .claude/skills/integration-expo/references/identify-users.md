@@ -10,6 +10,8 @@ To link events to specific users, call `identify`:
 
 PostHog AI
 
+## Code Examples
+
 ### Web
 
 ```javascript
@@ -191,7 +193,7 @@ Here's an example implementation for handling deep links from web to mobile:
 
 PostHog AI
 
-### iOS
+### iOS (Deep Linking)
 
 ```swift
 import PostHog
@@ -225,7 +227,7 @@ class DeepLinkIdentityManager {
 }
 ```
 
-### Android
+### Android (Deep Linking)
 
 ```kotlin
 import android.net.Uri

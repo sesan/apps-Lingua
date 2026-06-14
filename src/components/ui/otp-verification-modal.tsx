@@ -119,8 +119,14 @@ export const OTPVerificationModal = ({
                       await onResendCode();
                       posthog.capture('email_verification_resent', { mode });
                       Alert.alert('Success', 'Code resent successfully!');
-                    } catch (err: any) {
-                      const errMsg = err.errors?.[0]?.longMessage || 'Failed to resend code.';
+                    } catch (err: unknown) {
+                      let errMsg = 'Failed to resend code.';
+                      if (err && typeof err === 'object' && 'errors' in err && Array.isArray(err.errors) && err.errors.length > 0) {
+                        const firstError = err.errors[0];
+                        if (firstError && typeof firstError === 'object' && 'longMessage' in firstError) {
+                          errMsg = String(firstError.longMessage);
+                        }
+                      }
                       Alert.alert('Error', errMsg);
                     }
                   } else {
