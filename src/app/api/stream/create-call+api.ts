@@ -1,38 +1,6 @@
-import { Platform } from 'react-native';
+import { getLessonById, getLanguageById, getVocabularyForLanguage, getPhrasesForLanguage } from '../../../data/lessons';
 
-// Base64URL encoding helper
-function base64url(source: ArrayBuffer | string): string {
-  let binary = '';
-  if (typeof source === 'string') {
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(source);
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-  } else {
-    const bytes = new Uint8Array(source);
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-  }
-  return btoa(binary)
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
-}
-
-// Environment-agnostic Web Crypto reference
-const getSubtleCrypto = () => {
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    return crypto.subtle;
-  }
-  try {
-    const nodeCrypto = require('crypto');
-    return nodeCrypto.webcrypto.subtle;
-  } catch (e) {
-    throw new Error('Web Crypto API not available in this environment');
-  }
-};
+import { base64url, getSubtleCrypto } from '@/lib/crypto-utils';
 
 // JWT Signer with custom payload
 async function signStreamTokenWithPayload(payload: Record<string, any>, apiSecret: string): Promise<string> {
@@ -71,6 +39,7 @@ async function signStreamTokenWithPayload(payload: Record<string, any>, apiSecre
 export async function POST(request: Request) {
   try {
     const { userId, lessonId, languageId } = await request.json();
+    console.log('POST /api/stream/create-call parameters:', { userId, lessonId, languageId });
 
     if (!userId || !lessonId || !languageId) {
       return Response.json(
@@ -78,6 +47,35 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    const lesson = getLessonById(lessonId);
+    if (!lesson) {
+      return Response.json(
+        { error: `Lesson not found: ${lessonId}` },
+        { status: 404 }
+      );
+    }
+
+    const language = getLanguageById(languageId);
+    const languageName = language ? language.name : 'Unknown';
+    const allVocab = getVocabularyForLanguage(languageId);
+    const allPhrases = getPhrasesForLanguage(languageId);
+
+    const expectedVocabItems = allVocab
+      .filter((v) => lesson.aiTeacherPrompt.expectedVocabulary.includes(v.id))
+      .map((v) => ({
+        word: v.word,
+        translation: v.translation,
+        pronunciation: v.pronunciation,
+      }));
+
+    const expectedPhraseItems = allPhrases
+      .filter((p) => lesson.aiTeacherPrompt.expectedPhrases.includes(p.id))
+      .map((p) => ({
+        text: p.text,
+        translation: p.translation,
+        pronunciation: p.pronunciation,
+      }));
 
     const apiKey = process.env.STREAM_API_KEY || 'your_stream_api_key_here';
     const apiSecret = process.env.STREAM_API_SECRET || process.env.STREAM_SECRET_KEY || 'your_stream_api_secret_here';
@@ -101,18 +99,13 @@ export async function POST(request: Request) {
       });
     }
 
-    // Generate administrative system token for REST request
-    const now = Math.floor(Date.now() / 1000);
-    const adminPayload = {
-      server: true,
-      iat: now,
-      exp: now + 3600,
-    };
+    // Generate administrative system token for REST request matching Stream SDK empty payload structure
+    const adminPayload = {};
     
     const adminToken = await signStreamTokenWithPayload(adminPayload, apiSecret);
 
     // Make request to GetStream Video API to create call
-    const createCallUrl = `https://video.stream-io-api.com/api/v2/video/call/default/${callId}?api_key=${apiKey}`;
+    const createCallUrl = `https://video.stream-io-api.com/api/v2/video/call/audio_room/${callId}?api_key=${apiKey}`;
     
     const response = await fetch(createCallUrl, {
       method: 'POST',
@@ -125,12 +118,24 @@ export async function POST(request: Request) {
         data: {
           created_by_id: userId,
           members: [
-            { user_id: userId, role: 'user' }
+            { user_id: userId, role: 'user' },
+            { user_id: 'ai-teacher', role: 'admin' }
           ],
           custom: {
             lesson_id: lessonId,
             language_id: languageId,
+            language_name: languageName,
             started_at: new Date().toISOString(),
+            lesson_title: lesson.title,
+            lesson_description: lesson.description,
+            goals: lesson.goals,
+            ai_teacher_prompt: {
+              persona: lesson.aiTeacherPrompt.persona,
+              scenario: lesson.aiTeacherPrompt.scenario,
+              instructions: lesson.aiTeacherPrompt.instructions,
+            },
+            vocabulary: expectedVocabItems,
+            phrases: expectedPhraseItems,
           }
         }
       })

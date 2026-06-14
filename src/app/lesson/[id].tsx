@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useColorScheme, Platform } from 'react-native';
+import { useColorScheme, Platform, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,9 +11,19 @@ import { useLanguageStore } from '@/store/language-store';
 import { images } from '@/constants/images';
 import { posthog } from '@/lib/posthog';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import { useUser } from '@clerk/expo';
 import type { StreamVideoClient } from '@stream-io/video-react-native-sdk';
+
+// ─── Caption Types ────────────────────────────────────────────────────────────
+export interface LiveCaption {
+  id: string;
+  speakerId: string;
+  speakerName: string;
+  text: string;
+  isAI: boolean;
+  timestamp: number;
+}
 
 let StreamVideo: any = null;
 let StreamCall: any = null;
@@ -41,7 +51,7 @@ try {
 } catch (e) {
   console.log('Stream Video SDK is not available, falling back to simulated call.');
 }
-import { fetchStreamToken, createStreamCall, getStreamClient, resetStreamClient } from '@/lib/stream';
+import { fetchStreamToken, createStreamCall, getStreamClient, resetStreamClient, getApiUrl } from '@/lib/stream';
 
 // ─── Custom SVG Icons for Cross-Platform Pixel Perfection ────────────────────
 
@@ -180,6 +190,11 @@ export default function AudioLessonScreen() {
   const [initLoading, setInitLoading] = useState(true);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
 
+  // AI Agent States & Refs
+  const [agentStatus, setAgentStatus] = useState<'idle' | 'connecting' | 'connected' | 'failed'>('idle');
+  const [agentSessionId, setAgentSessionId] = useState<string | null>(null);
+  const agentSessionIdRef = useRef<string | null>(null);
+
   // Initialize Stream Video Call
   useEffect(() => {
     let active = true;
@@ -196,6 +211,7 @@ export default function AudioLessonScreen() {
           if (active) {
             setIsMock(true);
             setInitLoading(false);
+            setAgentStatus('connected');
           }
           return;
         }
@@ -205,12 +221,15 @@ export default function AudioLessonScreen() {
 
         // Get StreamVideoClient
         const streamClient = getStreamClient(apiKey, userId, token, userName);
-        const streamCall = streamClient.call('default', callId);
+        const streamCall = streamClient.call('audio_room', callId);
         
         await streamCall.join({
           create: true,
           data: {
-            members: [{ user_id: userId, role: 'user' }],
+            members: [
+              { user_id: userId, role: 'user' },
+              { user_id: 'ai-teacher', role: 'admin' }
+            ],
           },
         });
         await streamCall.camera.disable();
@@ -220,12 +239,37 @@ export default function AudioLessonScreen() {
           setCall(streamCall);
           setIsMock(false);
           setInitLoading(false);
+
+          // Start the AI Agent session
+          setAgentStatus('connecting');
+          const startUrl = getApiUrl('/api/agent/start');
+          fetch(startUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callId, callType: 'audio_room' }),
+          })
+            .then(async (res) => {
+              if (!res.ok) throw new Error(`Agent start HTTP error: ${res.status}`);
+              const data = await res.json();
+              if (data && data.session_id) {
+                setAgentSessionId(data.session_id);
+                agentSessionIdRef.current = data.session_id;
+                console.log('Agent session started successfully:', data.session_id);
+              } else {
+                throw new Error('Start agent response did not return session_id');
+              }
+            })
+            .catch((agentErr) => {
+              console.warn('Failed to start agent session:', agentErr);
+              setAgentStatus('failed');
+            });
         }
       } catch (err) {
         console.log('Stream Video init failed, using simulated call fallback:', err);
         if (active) {
           setIsMock(true);
           setInitLoading(false);
+          setAgentStatus('connected');
         }
       }
     }
@@ -240,12 +284,26 @@ export default function AudioLessonScreen() {
     };
   }, [userId, lesson!.id, language?.id]);
 
-  // Clean up client on unmount
+  // Clean up client and agent session on unmount
   useEffect(() => {
     return () => {
+      const sessionId = agentSessionIdRef.current;
+      if (sessionId && lesson) {
+        const sanitizedUserId = userId.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const sanitizedLessonId = lesson.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const rawCallId = `lesson_${sanitizedLessonId}_${sanitizedUserId}`;
+        const callId = rawCallId.substring(0, 64);
+        
+        const stopUrl = getApiUrl('/api/agent/stop');
+        fetch(stopUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callId, sessionId }),
+        }).catch((err) => console.warn('Error stopping agent on unmount:', err));
+      }
       resetStreamClient().catch((err) => console.warn('Error resetting stream client:', err));
     };
-  }, []);
+  }, [userId, lesson!.id]);
 
   const handleFinishLesson = () => {
     const isCompleted = completedLessonIds.includes(lesson!.id);
@@ -310,6 +368,12 @@ export default function AudioLessonScreen() {
           handleFinishLesson={handleFinishLesson}
           showCompletionModal={showCompletionModal}
           setShowCompletionModal={setShowCompletionModal}
+          userId={userId}
+          agentStatus={agentStatus}
+          setAgentStatus={setAgentStatus}
+          agentSessionId={agentSessionId}
+          setAgentSessionId={setAgentSessionId}
+          agentSessionIdRef={agentSessionIdRef}
         />
       </StreamCall>
     </StreamVideo>
@@ -325,6 +389,12 @@ function AudioLessonScreenStreamContent({
   handleFinishLesson,
   showCompletionModal,
   setShowCompletionModal,
+  userId,
+  agentStatus,
+  setAgentStatus,
+  agentSessionId,
+  setAgentSessionId,
+  agentSessionIdRef,
 }: {
   lesson: any;
   language: any;
@@ -333,14 +403,62 @@ function AudioLessonScreenStreamContent({
   handleFinishLesson: () => void;
   showCompletionModal: boolean;
   setShowCompletionModal: (show: boolean) => void;
+  userId: string;
+  agentStatus: 'idle' | 'connecting' | 'connected' | 'failed';
+  setAgentStatus: (status: 'idle' | 'connecting' | 'connected' | 'failed') => void;
+  agentSessionId: string | null;
+  setAgentSessionId: (id: string | null) => void;
+  agentSessionIdRef: React.MutableRefObject<string | null>;
 }) {
   const call = useCall();
-  const { useCallCallingState, useMicrophoneState } = useCallStateHooks();
+  const { useCallCallingState, useMicrophoneState, useParticipants, useCallClosedCaptions } = useCallStateHooks();
   
   const callingState = useCallCallingState();
   const { microphone, isMute } = useMicrophoneState();
+  const participants = useParticipants ? useParticipants() : [];
+  const rawCaptions: any[] = useCallClosedCaptions ? useCallClosedCaptions() : [];
 
   const isConnecting = callingState === CallingState.JOINING || callingState === CallingState.RECONNECTING;
+
+  const isAgentInCall = participants.some(
+    (p: any) => p.userId === 'ai-teacher' || p.user?.id === 'ai-teacher'
+  );
+
+  // Convert Stream captions to our LiveCaption format
+  const liveCaptions: LiveCaption[] = useMemo(() => {
+    return rawCaptions.map((c: any) => ({
+      id: c.id || `${c.start_time}-${c.speaker_id}`,
+      speakerId: c.speaker_id || 'user',
+      speakerName: c.speaker_id === 'ai-teacher' ? 'AI Teacher' : 'You',
+      text: c.text || '',
+      isAI: c.speaker_id === 'ai-teacher',
+      timestamp: c.start_time ? new Date(c.start_time).getTime() : Date.now(),
+    }));
+  }, [rawCaptions]);
+
+  useEffect(() => {
+    if (isAgentInCall && agentStatus === 'connecting') {
+      setAgentStatus('connected');
+    } else if (!isAgentInCall && agentStatus === 'connected') {
+      setAgentStatus('connecting');
+    }
+  }, [isAgentInCall, agentStatus]);
+
+  // Start closed captions when call is joined
+  useEffect(() => {
+    if (callingState === CallingState.JOINED && call) {
+      call.startClosedCaptions().catch((err: any) => {
+        console.warn('Failed to start closed captions:', err);
+      });
+    }
+    return () => {
+      if (call && callingState === CallingState.JOINED) {
+        call.stopClosedCaptions().catch((err: any) => {
+          console.warn('Failed to stop closed captions on unmount:', err);
+        });
+      }
+    };
+  }, [callingState === CallingState.JOINED]);
 
   let connectionStatusText = 'Connecting';
   if (callingState === CallingState.JOINED) {
@@ -362,11 +480,39 @@ function AudioLessonScreenStreamContent({
   };
 
   const handleEndCall = async () => {
+    // Stop captions first
+    try {
+      if (call) await call.stopClosedCaptions();
+    } catch (e) {
+      console.warn('Failed to stop captions on end call:', e);
+    }
+
     try {
       await call?.leave();
     } catch (e) {
       console.warn('Failed to end call:', e);
     }
+
+    if (agentSessionId) {
+      const sanitizedUserId = userId.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const sanitizedLessonId = lesson.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const rawCallId = `lesson_${sanitizedLessonId}_${sanitizedUserId}`;
+      const callId = rawCallId.substring(0, 64);
+      
+      const stopUrl = getApiUrl('/api/agent/stop');
+      fetch(stopUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callId, sessionId: agentSessionId }),
+      })
+        .then(() => {
+          setAgentSessionId(null);
+          agentSessionIdRef.current = null;
+        })
+        .catch((err) => console.warn('Failed to stop agent on end call:', err));
+    }
+    
+    setAgentStatus('idle');
     setShowCompletionModal(true);
   };
 
@@ -381,6 +527,8 @@ function AudioLessonScreenStreamContent({
       onToggleMic={handleToggleMic}
       onEndCall={handleEndCall}
       connectionStatusText={connectionStatusText}
+      agentStatus={agentStatus}
+      liveCaptions={liveCaptions}
       showCompletionModal={showCompletionModal}
       setShowCompletionModal={setShowCompletionModal}
       handleFinishLesson={handleFinishLesson}
@@ -406,15 +554,44 @@ function AudioLessonScreenMockContent({
   showCompletionModal: boolean;
   setShowCompletionModal: (show: boolean) => void;
 }) {
-  const [isConnecting, setIsConnecting] = useState(true);
+  const [agentStatus, setAgentStatus] = useState<'idle' | 'connecting' | 'connected' | 'failed'>('connecting');
   const [isMuted, setIsMuted] = useState(false);
+  const [mockCaptions, setMockCaptions] = useState<LiveCaption[]>([]);
+  const captionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Simulate the agent connecting after 1.5s
   useEffect(() => {
     const timer = setTimeout(() => {
-      setIsConnecting(false);
+      setAgentStatus('connected');
     }, 1500);
     return () => clearTimeout(timer);
   }, []);
+
+  // Generate simulated captions that rotate every few seconds
+  const mockCaptionScript: LiveCaption[] = useMemo(() => [
+    { id: 'mc1', speakerId: 'ai-teacher', speakerName: 'AI Teacher', text: `¡Hola! Bienvenido a la lección de hoy. I'm your AI language teacher!`, isAI: true, timestamp: 0 },
+    { id: 'mc2', speakerId: 'user', speakerName: 'You', text: 'Hello! I am ready to learn.', isAI: false, timestamp: 0 },
+    { id: 'mc3', speakerId: 'ai-teacher', speakerName: 'AI Teacher', text: lesson?.aiTeacherPrompt?.scenario ? `Let's practice: ${lesson.aiTeacherPrompt.scenario}` : 'Great! Let us practice together.', isAI: true, timestamp: 0 },
+    { id: 'mc4', speakerId: 'user', speakerName: 'You', text: 'Can you repeat that please?', isAI: false, timestamp: 0 },
+    { id: 'mc5', speakerId: 'ai-teacher', speakerName: 'AI Teacher', text: 'Of course! Try saying the phrase slowly after me.', isAI: true, timestamp: 0 },
+  ], [lesson]);
+
+  useEffect(() => {
+    if (agentStatus !== 'connected') return;
+
+    let idx = 0;
+    const cycle = () => {
+      const caption = { ...mockCaptionScript[idx % mockCaptionScript.length], id: `mc${Date.now()}`, timestamp: Date.now() };
+      setMockCaptions([caption]);
+      idx++;
+      captionTimerRef.current = setTimeout(cycle, 3500);
+    };
+
+    captionTimerRef.current = setTimeout(cycle, 800);
+    return () => {
+      if (captionTimerRef.current) clearTimeout(captionTimerRef.current);
+    };
+  }, [agentStatus]);
 
   return (
     <AudioLessonScreenContent
@@ -422,15 +599,104 @@ function AudioLessonScreenMockContent({
       language={language}
       expectedVocabItems={expectedVocabItems}
       expectedPhraseItems={expectedPhraseItems}
-      isConnecting={isConnecting}
+      isConnecting={agentStatus === 'connecting'}
       isMuted={isMuted}
       onToggleMic={() => setIsMuted(!isMuted)}
       onEndCall={() => setShowCompletionModal(true)}
-      connectionStatusText={isConnecting ? 'Connecting' : 'Online'}
+      connectionStatusText={agentStatus === 'connecting' ? 'Connecting' : 'Online'}
+      agentStatus={agentStatus}
+      liveCaptions={mockCaptions}
+      isMock={true}
       showCompletionModal={showCompletionModal}
       setShowCompletionModal={setShowCompletionModal}
       handleFinishLesson={handleFinishLesson}
     />
+  );
+}
+
+// ─── Live Captions Overlay Component ─────────────────────────────────────────
+function LiveCaptionsOverlay({ captions, isDark, userId }: { captions: LiveCaption[]; isDark: boolean; userId?: string }) {
+  const captionsEndRef = useRef<ScrollView>(null);
+
+  // Keep only the last 3 captions to avoid clutter
+  const visibleCaptions = captions.slice(-3);
+
+  useEffect(() => {
+    // Auto-scroll to latest caption
+    captionsEndRef.current?.scrollToEnd({ animated: true });
+  }, [captions.length]);
+
+  if (visibleCaptions.length === 0) return null;
+
+  return (
+    <View className="absolute bottom-[108px] left-4 right-4 z-20">
+      <ScrollView
+        ref={captionsEndRef}
+        style={{ maxHeight: 180 }}
+        contentContainerStyle={{ paddingBottom: 4 }}
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={false}
+      >
+        {visibleCaptions.map((caption, index) => (
+          <Animated.View
+            key={caption.id}
+            entering={FadeInDown.duration(250).springify()}
+            exiting={FadeOutDown.duration(200)}
+            style={{
+              marginBottom: 6,
+              alignSelf: caption.isAI ? 'flex-start' : 'flex-end',
+              maxWidth: '85%',
+            }}
+          >
+            {/* Speaker label */}
+            <Text
+              style={{
+                fontSize: 10,
+                fontFamily: 'Poppins_600SemiBold',
+                color: caption.isAI ? '#6C4EF5' : '#58CC02',
+                marginBottom: 2,
+                marginLeft: caption.isAI ? 6 : 0,
+                marginRight: caption.isAI ? 0 : 6,
+                textAlign: caption.isAI ? 'left' : 'right',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+            >
+              {caption.isAI ? '🤖 AI Teacher' : '🎙 You'}
+            </Text>
+
+            {/* Caption bubble */}
+            <View
+              style={{
+                backgroundColor: caption.isAI
+                  ? isDark ? 'rgba(108,78,245,0.18)' : 'rgba(108,78,245,0.12)'
+                  : isDark ? 'rgba(88,204,2,0.18)' : 'rgba(88,204,2,0.12)',
+                borderWidth: 1,
+                borderColor: caption.isAI
+                  ? isDark ? 'rgba(108,78,245,0.45)' : 'rgba(108,78,245,0.3)'
+                  : isDark ? 'rgba(88,204,2,0.45)' : 'rgba(88,204,2,0.3)',
+                borderRadius: 16,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                borderTopLeftRadius: caption.isAI ? 4 : 16,
+                borderTopRightRadius: caption.isAI ? 16 : 4,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontFamily: 'Poppins_500Medium',
+                  color: isDark ? '#FFFFFF' : '#0D132B',
+                  lineHeight: 22,
+                }}
+              >
+                {caption.text}
+              </Text>
+            </View>
+          </Animated.View>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -445,6 +711,9 @@ function AudioLessonScreenContent({
   onToggleMic,
   onEndCall,
   connectionStatusText,
+  agentStatus,
+  liveCaptions = [],
+  isMock = false,
   showCompletionModal,
   setShowCompletionModal,
   handleFinishLesson,
@@ -458,6 +727,9 @@ function AudioLessonScreenContent({
   onToggleMic: () => void;
   onEndCall: () => void;
   connectionStatusText: string;
+  agentStatus: 'idle' | 'connecting' | 'connected' | 'failed';
+  liveCaptions?: LiveCaption[];
+  isMock?: boolean;
   showCompletionModal: boolean;
   setShowCompletionModal: (show: boolean) => void;
   handleFinishLesson: () => void;
@@ -643,20 +915,20 @@ function AudioLessonScreenContent({
     if (isConnecting || showCompletionModal) return;
 
     if (isMuted) {
-      // Unmute microphone and trigger simulated speaking step progression
       onToggleMic();
-      setIsListening(true);
-      setTimeout(() => {
-        setIsListening(false);
-        if (activeStep < dialogueSteps.length - 1) {
-          setActiveStep((prev) => prev + 1);
-          setIsPlayingAudio(true);
-        } else {
-          onEndCall();
-        }
-      }, 2000);
+      if (isMock) {
+        setIsListening(true);
+        setTimeout(() => {
+          setIsListening(false);
+          if (activeStep < dialogueSteps.length - 1) {
+            setActiveStep((prev) => prev + 1);
+            setIsPlayingAudio(true);
+          } else {
+            onEndCall();
+          }
+        }, 2000);
+      }
     } else {
-      // Mute microphone
       onToggleMic();
     }
   };
@@ -683,9 +955,17 @@ function AudioLessonScreenContent({
             AI Teacher
           </Text>
           <View className="flex-row items-center mt-0.5">
-            <View className={`w-2.5 h-2.5 rounded-full mr-2 ${connectionStatusText === 'Connecting' ? 'bg-amber-400' : connectionStatusText === 'Error' ? 'bg-red-500' : 'bg-[#58CC02]'}`} />
-            <Text className="text-[13px] font-poppins-semibold text-neutral-text-secondary dark:text-[#9CA3AF]">
-              {connectionStatusText}
+            <View className={`w-2.5 h-2.5 rounded-full mr-2 ${
+              agentStatus === 'connecting'
+                ? 'bg-amber-400'
+                : agentStatus === 'failed'
+                ? 'bg-red-500'
+                : agentStatus === 'connected'
+                ? 'bg-[#58CC02]'
+                : 'bg-gray-400'
+            }`} />
+            <Text className="text-[13px] font-poppins-semibold text-neutral-text-secondary dark:text-[#9CA3AF] capitalize">
+              {agentStatus}
             </Text>
           </View>
         </View>
@@ -747,8 +1027,11 @@ function AudioLessonScreenContent({
           </View>
         )}
 
-        {/* Speech Bubble */}
-        {!isConnecting && (
+        {/* Live Captions Overlay — Real-time captions from Stream SDK or simulation */}
+        {!isConnecting && liveCaptions.length > 0 ? (
+          <LiveCaptionsOverlay captions={liveCaptions} isDark={isDark} />
+        ) : !isConnecting ? (
+          /* Fallback Static Speech Bubble when no live captions yet */
           <View className="absolute bottom-[108px] left-4 right-4 z-20">
             <View className="bg-white dark:bg-[#1E2540] p-5 rounded-3xl shadow-lg border border-neutral-border dark:border-[#2E375B] relative">
               <View className="flex-row justify-between items-start">
@@ -794,7 +1077,7 @@ function AudioLessonScreenContent({
               />
             </View>
           </View>
-        )}
+        ) : null}
 
         {/* Audio control panel */}
         <View className="absolute bottom-6 left-0 right-0 flex-row items-center justify-evenly px-4 z-20">

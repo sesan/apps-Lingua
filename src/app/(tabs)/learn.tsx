@@ -222,12 +222,14 @@ export default function LearnScreen() {
               return (
                 <Pressable
                   key={lesson.id}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/lesson/[id]',
-                      params: { id: lesson.id },
-                    })
-                  }
+                  onPress={() => {
+                    if (!isLocked) {
+                      router.push({
+                        pathname: '/lesson/[id]',
+                        params: { id: lesson.id },
+                      });
+                    }
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={`Lesson ${lesson.number}: ${lesson.title}. ${
                     isCompleted ? 'Completed' : isActive ? 'In progress' : 'Locked'

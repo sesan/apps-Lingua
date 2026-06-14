@@ -1,40 +1,6 @@
-import { Platform } from 'react-native';
+// Token API Route for client authentication
 
-// Base64URL encoding helper
-function base64url(source: ArrayBuffer | string): string {
-  let binary = '';
-  if (typeof source === 'string') {
-    // UTF-8 string to binary string
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(source);
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-  } else {
-    const bytes = new Uint8Array(source);
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-  }
-  return btoa(binary)
-    .replace(/=/g, '')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
-}
-
-// Environment-agnostic Web Crypto reference
-const getSubtleCrypto = () => {
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    return crypto.subtle;
-  }
-  try {
-    // Dynamic require for Node.js fallback (failsafe for local dev vs worker edge)
-    const nodeCrypto = require('crypto');
-    return nodeCrypto.webcrypto.subtle;
-  } catch (e) {
-    throw new Error('Web Crypto API not available in this environment');
-  }
-};
+import { base64url, getSubtleCrypto } from '@/lib/crypto-utils';
 
 // HS256 Token generator
 export async function signStreamToken(userId: string, apiSecret: string): Promise<string> {

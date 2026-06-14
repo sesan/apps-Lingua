@@ -73,7 +73,7 @@ These cross-platform package management and development learnings apply to any R
 
 ### 3. Type Checking Dynamic Platform Maps
 * **Problem:** Highly-typed cross-platform components (such as Apple SF Symbols or custom vector packages) restrict name parameters to rigid union strings. Passing platform configuration mappings (like `{ ios: 'foo', android: 'bar' }`) can cause type errors because compilers fail to infer the conditional string literals dynamically.
-* **Solution:** Cast nested platform configurations explicitly (`as any` or narrowing down config definitions) to prevent compile errors.
+* **Solution:** Refine the type definitions to use discriminated unions or mapped types that can infer platform‑specific string literals, or apply type narrowing techniques instead of using `as any` casts.
 
 ### 4. Tooling Upgrade Compatibility (ESLint v10+)
 * **Problem:** Upgrading linters or compiler tools (like ESLint) to new major versions before their respective ecosystem plugins (such as React or Prettier plugins) support the new APIs will crash your analysis process.
