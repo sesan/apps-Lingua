@@ -57,4 +57,27 @@ This document logs critical learnings, gotchas, and architectural choices made d
   3. Customize theme integrations to react to active configurations (e.g., translating greetings to "Hola", "Bonjour", "Konnichiwa" based on the user's selected language) to make the app feel extremely premium.
   4. Write clean custom SVG elements for standard icons (like bell, headphones, book) to ensure absolute cross-platform visual consistency.
 
+---
+
+## Agnostic React Native & Tooling Learnings
+
+These cross-platform package management and development learnings apply to any React Native or Expo project setup:
+
+### 1. Native Module Version Resolution (`Native module is null`)
+* **Problem:** Standard package managers (`npm install` or `yarn add`) install the latest version of a package. If the native wrapper's compiled version mismatch the core SDK architecture (e.g. AsyncStorage or keychains under specific Expo SDKs), it causes native initialization failures at runtime.
+* **Solution:** Always install native dependencies using the framework-specific compiler CLI (e.g. `npx expo install <package-name>`). This queries the exact verified/compatible native binary version recommended for your current target SDK.
+
+### 2. Metro Bundler Resolver Caches
+* **Problem:** Modifying package versions or downgrading files can lead to Metro caching stale resolution maps, manifesting as `Unable to resolve module` warnings for packages that exist in your `node_modules` folder.
+* **Solution:** Clear the bundler cache when starting the server to rebuild file paths correctly (e.g. `npx expo start -c` or `yarn start --clear`).
+
+### 3. Type Checking Dynamic Platform Maps
+* **Problem:** Highly-typed cross-platform components (such as Apple SF Symbols or custom vector packages) restrict name parameters to rigid union strings. Passing platform configuration mappings (like `{ ios: 'foo', android: 'bar' }`) can cause type errors because compilers fail to infer the conditional string literals dynamically.
+* **Solution:** Cast nested platform configurations explicitly (`as any` or narrowing down config definitions) to prevent compile errors.
+
+### 4. Tooling Upgrade Compatibility (ESLint v10+)
+* **Problem:** Upgrading linters or compiler tools (like ESLint) to new major versions before their respective ecosystem plugins (such as React or Prettier plugins) support the new APIs will crash your analysis process.
+* **Solution:** Avoid upgrading critical linter tools past the versions pinned inside the framework's official initialization template until full suite support is validated.
+
+
 

@@ -15,11 +15,11 @@ import { Colors } from '@/constants/theme';
 
 // Tab definitions for web (expo-router/ui headless tabs)
 const TABS: { key: string; href: string; label: string; icon: SymbolViewProps['name'] }[] = [
-  { key: 'home',       href: '/',           label: 'Home',       icon: { ios: 'house.fill',   android: 'home',         web: 'house.fill' } },
-  { key: 'learn',      href: '/learn',      label: 'Learn',      icon: { ios: 'book.fill',    android: 'menu_book',    web: 'book.fill' } },
-  { key: 'ai-teacher', href: '/ai-teacher', label: 'AI Teacher', icon: { ios: 'sparkles',     android: 'auto_awesome', web: 'sparkles' } },
-  { key: 'chat',       href: '/chat',       label: 'Chat',       icon: { ios: 'message.fill', android: 'chat',         web: 'message.fill' } },
-  { key: 'profile',    href: '/profile',    label: 'Profile',    icon: { ios: 'person.fill',  android: 'person',       web: 'person.fill' } },
+  { key: 'home',       href: '/',           label: 'Home',       icon: { ios: 'house.fill',   android: 'home',         web: 'house.fill' } as any },
+  { key: 'learn',      href: '/learn',      label: 'Learn',      icon: { ios: 'book.fill',    android: 'menu_book',    web: 'book.fill' } as any },
+  { key: 'ai-teacher', href: '/ai-teacher', label: 'AI Teacher', icon: { ios: 'sparkles',     android: 'auto_awesome', web: 'sparkles' } as any },
+  { key: 'chat',       href: '/chat',       label: 'Chat',       icon: { ios: 'message.fill', android: 'chat',         web: 'message.fill' } as any },
+  { key: 'profile',    href: '/profile',    label: 'Profile',    icon: { ios: 'person.fill',  android: 'person',       web: 'person.fill' } as any },
 ];
 
 export default function AppTabs() {
@@ -43,7 +43,7 @@ export default function AppTabs() {
 
 interface WebTabButtonProps extends TabTriggerSlotProps {
   label?: string;
-  icon?: SymbolViewProps['name'];
+  icon?: any;
 }
 
 export function WebTabButton({ isFocused, label, icon, ...props }: WebTabButtonProps) {

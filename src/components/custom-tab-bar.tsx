@@ -20,7 +20,7 @@ export interface TabItem {
   key: string;
   label: string;
   /** expo-symbols SymbolView name object: { ios, android, web } */
-  icon: SymbolViewProps['name'];
+  icon: any;
 }
 
 interface CustomTabBarProps {

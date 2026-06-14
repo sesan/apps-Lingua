@@ -7,6 +7,8 @@ const palace = require('@/assets/images/palace.png');
 const earth = require('@/assets/images/earth.png');
 const lessonHeaderCafe = require('@/assets/images/lesson-header-cafe.png');
 const cardCafeTable = require('@/assets/images/card-cafe-table.png');
+const roomBlur = require('@/assets/images/room-blur.png');
+const userPip = require('@/assets/images/user-pip.png');
 
 export const images = {
   mascotAuth,
@@ -18,6 +20,8 @@ export const images = {
   earth,
   lessonHeaderCafe,
   cardCafeTable,
+  roomBlur,
+  userPip,
 };
 
 export default images;
