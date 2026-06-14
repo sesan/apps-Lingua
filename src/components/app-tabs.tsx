@@ -3,11 +3,11 @@ import { Tabs } from 'expo-router';
 import CustomTabBar, { TabItem } from './custom-tab-bar';
 
 const TABS: TabItem[] = [
-  { key: 'index',      label: 'Home',       icon: { ios: 'house.fill',    android: 'home',         web: 'house.fill' } },
-  { key: 'learn',      label: 'Learn',      icon: { ios: 'book.fill',     android: 'menu_book',    web: 'book.fill' } },
-  { key: 'ai-teacher', label: 'AI Teacher', icon: { ios: 'sparkles',      android: 'auto_awesome', web: 'sparkles' } },
-  { key: 'chat',       label: 'Chat',       icon: { ios: 'message.fill',  android: 'chat',         web: 'message.fill' } },
-  { key: 'profile',    label: 'Profile',    icon: { ios: 'person.fill',   android: 'person',       web: 'person.fill' } },
+  { key: 'index',      label: 'Home',       icon: { ios: 'house.fill',    android: 'home',         web: 'house.fill' } as any },
+  { key: 'learn',      label: 'Learn',      icon: { ios: 'book.fill',     android: 'menu_book',    web: 'book.fill' } as any },
+  { key: 'ai-teacher', label: 'AI Teacher', icon: { ios: 'sparkles',      android: 'auto_awesome', web: 'sparkles' } as any },
+  { key: 'chat',       label: 'Chat',       icon: { ios: 'message.fill',  android: 'chat',         web: 'message.fill' } as any },
+  { key: 'profile',    label: 'Profile',    icon: { ios: 'person.fill',   android: 'person',       web: 'person.fill' } as any },
 ];
 
 const ROUTE_TO_INDEX: Record<string, number> = {

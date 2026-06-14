@@ -20,7 +20,7 @@ export default {
       predictiveBackGestureEnabled: false,
     },
     web: {
-      output: 'single',
+      output: 'server',
       favicon: './assets/images/favicon.png',
     },
     plugins: [
@@ -38,6 +38,16 @@ export default {
       '@clerk/expo',
       'expo-secure-store',
       'expo-web-browser',
+      '@stream-io/video-react-native-sdk',
+      '@config-plugins/react-native-webrtc',
+      [
+        'expo-build-properties',
+        {
+          android: {
+            minSdkVersion: 24,
+          },
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,
