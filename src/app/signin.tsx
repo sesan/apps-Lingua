@@ -9,7 +9,7 @@ import { View, Text, Pressable, ScrollView, TextInput } from '@/tw';
 import { Image } from '@/tw/image';
 import { GoogleIcon, FacebookIcon, AppleIcon } from '@/components/social-icons';
 import { OTPVerificationModal } from '@/components/ui/otp-verification-modal';
-import { useSignIn, useSSO } from '@clerk/expo';
+import { useSignIn, useSSO, useAuth } from '@clerk/expo';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 
@@ -27,6 +27,7 @@ export default function SignInScreen() {
 
   const { signIn, errors, fetchStatus } = useSignIn();
   const { startSSOFlow } = useSSO();
+  const { userId } = useAuth();
   const posthog = usePostHog();
 
   // Form states
@@ -106,12 +107,9 @@ export default function SignInScreen() {
             return;
           }
           posthog.capture('sign_in_completed', { method: 'email' });
-          const userId = signIn.createdUserId;
-          if (userId) {
-            posthog.identify(userId, {
-              $set: { email },
-            });
-          }
+          posthog.identify(userId || email, {
+            $set: { email },
+          });
           setShowModal(false);
           router.replace('/');
         } else {

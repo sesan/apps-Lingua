@@ -120,14 +120,17 @@ export const OTPVerificationModal = ({
                       posthog.capture('email_verification_resent', { mode });
                       Alert.alert('Success', 'Code resent successfully!');
                     } catch (err: unknown) {
-                      let errMsg = 'Failed to resend code.';
+                      const errMsg = err instanceof Error ? err.message : 'Failed to resend code.';
+                      posthog.captureException(err instanceof Error ? err : new Error(errMsg));
+
+                      let displayMsg = errMsg;
                       if (err && typeof err === 'object' && 'errors' in err && Array.isArray(err.errors) && err.errors.length > 0) {
                         const firstError = err.errors[0];
                         if (firstError && typeof firstError === 'object' && 'longMessage' in firstError) {
-                          errMsg = String(firstError.longMessage);
+                          displayMsg = String(firstError.longMessage);
                         }
                       }
-                      Alert.alert('Error', errMsg);
+                      Alert.alert('Error', displayMsg);
                     }
                   } else {
                     Alert.alert('Info', 'Code resent!');
