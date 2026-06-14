@@ -113,6 +113,7 @@ function RootLayoutNav() {
           <Stack.Screen name="signup" />
           <Stack.Screen name="signin" />
           <Stack.Screen name="language-select" />
+          <Stack.Screen name="lesson/[id]" />
         </Stack>
       </PostHogProvider>
     </ThemeProvider>
