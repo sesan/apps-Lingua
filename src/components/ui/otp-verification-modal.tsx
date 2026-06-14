@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useColorScheme, KeyboardAvoidingView, Platform, Modal, TextInput as RNTextInput, Alert } from 'react-native';
+import { usePostHog } from 'posthog-react-native';
 import { View, Text, Pressable } from '@/tw';
 
 export interface OTPVerificationModalProps {
@@ -21,6 +22,7 @@ export const OTPVerificationModal = ({
 }: OTPVerificationModalProps) => {
   const scheme = useColorScheme();
   const codeInputRef = useRef<RNTextInput>(null);
+  const posthog = usePostHog();
 
   useEffect(() => {
     if (visible) {
@@ -110,11 +112,12 @@ export const OTPVerificationModal = ({
               <Text className="text-sm font-poppins text-[#4B5563] dark:text-[#9CA3AF]">
                 Didn't receive the code?
               </Text>
-              <Pressable 
+              <Pressable
                 onPress={async () => {
                   if (onResendCode) {
                     try {
                       await onResendCode();
+                      posthog.capture('email_verification_resent', { mode });
                       Alert.alert('Success', 'Code resent successfully!');
                     } catch (err: any) {
                       const errMsg = err.errors?.[0]?.longMessage || 'Failed to resend code.';
@@ -123,7 +126,7 @@ export const OTPVerificationModal = ({
                   } else {
                     Alert.alert('Info', 'Code resent!');
                   }
-                }} 
+                }}
                 accessibilityRole="button"
                 accessibilityLabel="Resend Code"
                 className="active:opacity-70"

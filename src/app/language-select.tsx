@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+import { usePostHog } from 'posthog-react-native';
 import { ScrollView, View, Text, Pressable, TextInput } from '@/tw';
 import { Image } from '@/tw/image';
 import { StatusBar } from 'expo-status-bar';
@@ -22,6 +23,7 @@ export default function LanguageSelectScreen() {
   const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const posthog = usePostHog();
   const { activeLanguageId, changeLanguage } = useActiveLanguage();
 
   const [selectedId, setSelectedId] = useState<string | null>(activeLanguageId);
@@ -37,6 +39,12 @@ export default function LanguageSelectScreen() {
   // Handle confirmation
   const handleConfirm = async () => {
     if (selectedId) {
+      const isFirstSelection = !activeLanguageId;
+      const eventName = isFirstSelection ? 'language_selected' : 'language_changed';
+      posthog.capture(eventName, {
+        language_id: selectedId,
+        previous_language_id: activeLanguageId ?? null,
+      });
       await changeLanguage(selectedId);
       if (router.canGoBack()) {
         router.back();

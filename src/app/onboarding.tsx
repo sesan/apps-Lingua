@@ -1,5 +1,6 @@
 import React from 'react';
 import { useColorScheme } from 'react-native';
+import { usePostHog } from 'posthog-react-native';
 import { Image } from '@/tw/image';
 import { View, Text, Pressable } from '@/tw';
 import { SymbolView } from 'expo-symbols';
@@ -13,8 +14,10 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const scheme = useColorScheme();
   const router = useRouter();
+  const posthog = usePostHog();
 
   const handleGetStarted = () => {
+    posthog.capture('onboarding_get_started_tapped');
     router.push('/signup');
   };
 

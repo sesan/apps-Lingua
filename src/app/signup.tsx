@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useColorScheme, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { usePostHog } from 'posthog-react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,6 +36,7 @@ export default function SignUpScreen() {
 
   const { signUp, errors, fetchStatus } = useSignUp();
   const { startSSOFlow } = useSSO();
+  const posthog = usePostHog();
 
   // Form states
   const [email, setEmail] = useState('');
@@ -82,6 +84,8 @@ export default function SignUpScreen() {
 
     if (!isValid) return;
 
+    posthog.capture('sign_up_started', { method: 'email' });
+
     try {
       const { error } = await signUp.password({
         emailAddress: email,
@@ -111,6 +115,7 @@ export default function SignUpScreen() {
       setShowModal(true);
     } catch (err: any) {
       console.error('Registration Catch Error', err);
+      posthog.captureException(err instanceof Error ? err : new Error(err?.message || 'Registration failed'));
       Alert.alert('Registration Error', err.message || 'Failed to start registration.');
     }
   };
@@ -137,6 +142,11 @@ export default function SignUpScreen() {
             Alert.alert('Activation Failed', finalizeError.longMessage || finalizeError.message);
             return;
           }
+          posthog.capture('sign_up_completed', { method: 'email' });
+          posthog.identify(email, {
+            $set: { email },
+            $set_once: { first_seen: new Date().toISOString() },
+          });
           setShowModal(false);
           router.replace('/');
         } else {
@@ -145,6 +155,7 @@ export default function SignUpScreen() {
         }
       } catch (err: any) {
         console.error('Verification catch error', err);
+        posthog.captureException(err instanceof Error ? err : new Error(err?.message || 'Verification failed'));
         Alert.alert('Verification Failed', err.message || 'An unexpected error occurred.');
       }
     }
@@ -166,17 +177,19 @@ export default function SignUpScreen() {
 
       if (createdSessionId && setOAuthActive) {
         await setOAuthActive({ session: createdSessionId });
+        posthog.capture('sign_up_oauth_completed', { provider: strategy });
         router.replace('/');
       }
     } catch (err: any) {
       console.error('OAuth error', JSON.stringify(err, null, 2));
+      posthog.captureException(err instanceof Error ? err : new Error(err?.message || 'OAuth failed'));
       const errMsg = err.errors?.[0]?.longMessage || err.message || 'OAuth flow failed.';
       Alert.alert('Authentication Failed', errMsg);
     }
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-white dark:bg-neutral-text"
     >
